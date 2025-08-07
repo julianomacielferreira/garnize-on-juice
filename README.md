@@ -23,9 +23,23 @@ O objetivo é processar o máximo de pagamentos possível.
 
 ### Diagrama
 
+![Basic Diagram](static/basic-diagram.png)
+
 @TODO
 
 ## Referências
+
+[Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025)
+
+[RESTinio](https://stiffstream.com/en/products/restinio.html)
+
+[Cpp Reference](https://cppreference.com/)
+
+[ISO Cpp](https://isocpp.org/)
+
+[Docker](https://docs.docker.com/)
+
+[CLion](https://www.jetbrains.com/pt-br/clion/)
 
 @TODO
 
