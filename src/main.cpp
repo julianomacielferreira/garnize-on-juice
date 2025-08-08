@@ -173,30 +173,37 @@ public:
 
         while (pos < JSON.size())
         {
-            size_t keyEnd = JSON.find(':', pos);
+            // Encontra o início da chave
+            size_t keyStart = JSON.find('"', pos) + 1;
 
-            string key = JSON.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
+            // Encontra o fim da chave
+            size_t keyEnd = JSON.find('"', keyStart);
 
-            pos = keyEnd + 1;
+            // Extrai a chave
+            string key = JSON.substr(keyStart, keyEnd - keyStart);
 
-            size_t valueEnd = JSON.find(',', pos);
+            // Encontra o início do valor
+            pos = JSON.find(':', keyEnd) + 1;
+
+            size_t valueEnd = JSON.find_first_of(",}", pos);
 
             if (valueEnd == string::npos)
-                valueEnd = JSON.find('}', pos);
+                valueEnd = JSON.size();
 
             string value = JSON.substr(pos, valueEnd - pos);
 
             // Verifica se o valor está entre aspas
             if (value[0] == '"' && value[value.size() - 1] == '"')
             {
-                value = value.substr(1, value.size() - 2); // remove as aspas
+                // remove as aspas
+                value = value.substr(1, value.size() - 2);
             }
 
             data[key] = value;
 
             pos = valueEnd + 1;
 
-            // Verifica se chegou ao fim do objeto
+            // Verifica se chegou ao fim do objeto para não ficar em loop infinito
             if (JSON[pos - 1] == '}')
                 break;
         }
@@ -216,13 +223,15 @@ private:
     static string removeInvalidCharacters(const string &jsonString)
     {
         string cleaned;
-        for (char c : jsonString)
+
+        for (char character : jsonString)
         {
-            if (c >= 32 && c <= 126)
+            if (character >= 32 && character <= 126)
             { // caracteres imprimíveis ASCII
-                cleaned += c;
+                cleaned += character;
             }
         }
+
         return cleaned;
     }
 
@@ -236,7 +245,6 @@ private:
      */
     static string removeUnnecessarySpaces(const string &jsonString)
     {
-
         return regex_replace(removeInvalidCharacters(jsonString), regex("\\s+(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)"), "");
     }
 };
