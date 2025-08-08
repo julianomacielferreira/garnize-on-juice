@@ -36,7 +36,16 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ### Como compilar e rodar o Projeto
 
-@TODO
+Existe um script bash chamado ``compile.sh`` bastando torná-lo executável com a instrução ``chmod +x compile.sh``.
+
+Para usar o script, basta executá-lo com ou sem a flag ``--debug``:
+
+```bash
+./compile.sh # Compila com flag de otimização
+./compile.sh --debug # Compila para depuração
+```
+
+<sub>As instruções acima foram testadas somente em ambiente Linux.</sub>
 
 ### Rodar com Docker compose
 
