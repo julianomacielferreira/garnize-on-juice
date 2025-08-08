@@ -15,6 +15,23 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ```
 
+### Estrutura do Projeto
+
+```
+.
+├── compile.sh
+├── docker-compose.yml
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── src
+│   └── main.cpp
+└── static
+    ├── basic-diagram.png
+    ├── garnize-on-juice.png
+    └── mesa-digitalizadora-wacom.jpg
+```
+
 ### Como compilar e rodar o Projeto
 
 @TODO
@@ -38,23 +55,6 @@ Primeiro cenário desenvolvido:
 ![Basic Diagram](static/basic-diagram.png)
 
 @TODO
-
-### Estrutura do Projeto
-
-```
-.
-├── compile.sh
-├── docker-compose.yml
-├── Dockerfile
-├── LICENSE
-├── README.md
-├── src
-│   └── main.cpp
-└── static
-    ├── basic-diagram.png
-    ├── garnize-on-juice.png
-    └── mesa-digitalizadora-wacom.jpg
-```
 
 ### Detalhes Técnicos
 
@@ -90,6 +90,8 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
 ## Referências
 
 [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025)
+
+[Debug C++ in Visual Studio Code](https://code.visualstudio.com/docs/cpp/cpp-debug)
 
 [Cpp Reference](https://cppreference.com/)
 
