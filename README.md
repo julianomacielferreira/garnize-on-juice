@@ -21,9 +21,13 @@ Desenvolver uma API que intermedia pagamentos para dois serviços de processamen
 
 O objetivo é processar o máximo de pagamentos possível.
 
-### Diagrama
+### Diagramas
 
 ![Basic Diagram](static/basic-diagram.png)
+
+@TODO
+
+### Estrutura do Projeto
 
 @TODO
 
