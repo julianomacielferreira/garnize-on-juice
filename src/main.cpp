@@ -57,6 +57,16 @@ public:
     inline static const string NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n\r\n";
 
     /**
+     * @brief Resposta HTTP padrão para recursos criados com sucesso (201 Created).
+     */
+    inline static const string CREATED_RESPONSE = "HTTP/1.1 201 Created\r\n\r\n";
+
+    /**
+     * @brief Resposta HTTP padrão para requisições bem-sucedidas (200 OK).
+     */
+    inline static const string OK_RESPONSE = "HTTP/1.1 200 OK\r\n\r\n";
+
+    /**
      * @brief URL padrão do processador de pagamentos.
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
@@ -327,7 +337,7 @@ string handlePostPayment(const string &body)
 
     // Aqui adicionar uma chamada a rinha
 
-    return "HTTP/1.1 201 Created\r\n\r\nPayments Request";
+    return Constants::CREATED_RESPONSE;
 }
 
 // Função para lidar com requisições GET /payments-summary
@@ -366,7 +376,7 @@ string handleGetPaymentSummary(const string &query)
     // Aqui adicionar uma chamada a rinha
 
     // Retorna o total de pagamentos
-    return "HTTP/1.1 200 OK\r\n\r\nTotal: " + to_string(total);
+    return Constants::OK_RESPONSE + "Total: " + to_string(total);
 }
 
 int main()
