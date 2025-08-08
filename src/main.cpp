@@ -143,19 +143,30 @@ public:
     static vector<map<string, string>> parseJson(const string &jsonString)
     {
 
-        string jsonStringCleaned = removeUnnecessarySpaces(jsonString);
-        jsonStringCleaned = jsonStringCleaned.substr(1, jsonStringCleaned.size() - 2); // Remove as chaves {}
+        string json = removeUnnecessarySpaces(jsonString);
+        json = json.substr(1, json.size() - 2); // Remove as chaves {}
 
         map<string, string> data;
         size_t pos = 0;
 
-        while (pos < jsonStringCleaned.size())
+        while (pos < json.size())
         {
-            size_t keyEnd = jsonStringCleaned.find(':');
+            size_t keyEnd = json.find(':');
 
-            string key = jsonStringCleaned.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
+            string key = json.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
 
             pos = keyEnd + 1;
+
+            size_t valueEnd = json.find(',', pos);
+
+            if (valueEnd == string::npos)
+                valueEnd = json.size();
+
+            string value = json.substr(pos + 1, valueEnd - pos - 2); // remove as aspas
+
+            data[key] = value;
+
+            pos = valueEnd + 1;
         }
 
         return {data};
