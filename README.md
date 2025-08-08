@@ -90,7 +90,7 @@ Para criá-los utilizei uma mesa digitalizadora wacom.
     */
    static string removeUnnecessarySpaces(const string &jsonString)
    {
-       return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
+       return regex_replace(jsonString, regex("\\s+(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)"), "");
    }
 ```
 
