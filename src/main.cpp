@@ -196,6 +196,27 @@ public:
 
 private:
     /**
+     * @brief Remove caracteres não imprimíveis da string JSON.
+     *
+     * Essa função itera sobre a string JSON e remove todos os caracteres que não são imprimíveis ASCII (código entre 32 e 126).
+     *
+     * @param jsonString String JSON a ser limpa.
+     * @return String JSON limpa, sem caracteres não imprimíveis.
+     */
+    static string removeInvalidCharacters(const string &jsonString)
+    {
+        string cleaned;
+        for (char c : jsonString)
+        {
+            if (c >= 32 && c <= 126)
+            { // caracteres imprimíveis ASCII
+                cleaned += c;
+            }
+        }
+        return cleaned;
+    }
+
+    /**
      * @brief Remove os espaços em branco desnecessários de uma string JSON.
      *
      * Esse método utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
@@ -205,7 +226,8 @@ private:
      */
     static string removeUnnecessarySpaces(const string &jsonString)
     {
-        return regex_replace(jsonString, regex("\\s+(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)"), "");
+
+        return regex_replace(removeInvalidCharacters(jsonString), regex("\\s+(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)"), "");
     }
 };
 
@@ -311,6 +333,8 @@ string handlePostPayment(const string &body)
     Timer timer;
 
     // Parse do corpo da requisição
+    auto json = JsonParser::parseJson(body);
+
     size_t pos = body.find("correlationId");
 
     if (pos == string::npos)
