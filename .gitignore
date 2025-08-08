@@ -42,3 +42,9 @@
 
 # intelliJ IDEA
 .idea
+
+# vscode
+.vscode
+
+# Executable
+garnize_on_juice
