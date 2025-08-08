@@ -67,6 +67,11 @@ public:
     inline static const string OK_RESPONSE = "HTTP/1.1 200 OK\r\n\r\n";
 
     /**
+     * @brief Mensagem de erro para requisição inválida.
+     */
+    inline static const string INVALID_REQUEST_MSG = "Requisição inválida";
+
+    /**
      * @brief URL padrão do processador de pagamentos.
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
@@ -267,14 +272,14 @@ public:
 
         if (methodEnd == string::npos)
         {
-            throw invalid_argument("Requisição inválida");
+            throw invalid_argument(Constants::INVALID_REQUEST_MSG);
         }
 
         size_t pathEnd = request.find(" ", methodEnd + 1);
 
         if (pathEnd == string::npos)
         {
-            throw invalid_argument("Requisição inválida");
+            throw invalid_argument(Constants::INVALID_REQUEST_MSG);
         }
 
         return request.substr(methodEnd + 1, pathEnd - methodEnd - 1);
@@ -483,7 +488,7 @@ int main()
         size_t pos = request.find(" ");
         if (pos == string::npos)
         {
-            LOGGER::error("Requisição inválida");
+            LOGGER::error(Constants::INVALID_REQUEST_MSG);
             continue;
         }
 
@@ -493,7 +498,7 @@ int main()
 
         if (pos == string::npos)
         {
-            LOGGER::error("Requisição inválida");
+            LOGGER::error(Constants::INVALID_REQUEST_MSG);
             continue;
         }
 
