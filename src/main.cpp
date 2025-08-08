@@ -165,10 +165,10 @@ public:
     static vector<map<string, string>> parseJson(const string &jsonString)
     {
 
-        string JSON = removeUnnecessarySpaces(jsonString);
-        JSON = JSON.substr(1, JSON.size() - 2); // Remove as chaves {}
+        const string JSON = removeUnnecessarySpaces(jsonString);
 
         map<string, string> data;
+
         size_t pos = 0;
 
         while (pos < JSON.size())
@@ -182,13 +182,23 @@ public:
             size_t valueEnd = JSON.find(',', pos);
 
             if (valueEnd == string::npos)
-                valueEnd = JSON.size();
+                valueEnd = JSON.find('}', pos);
 
-            string value = JSON.substr(pos + 1, valueEnd - pos - 2); // remove as aspas
+            string value = JSON.substr(pos, valueEnd - pos);
+
+            // Verifica se o valor está entre aspas
+            if (value[0] == '"' && value[value.size() - 1] == '"')
+            {
+                value = value.substr(1, value.size() - 2); // remove as aspas
+            }
 
             data[key] = value;
 
             pos = valueEnd + 1;
+
+            // Verifica se chegou ao fim do objeto
+            if (JSON[pos - 1] == '}')
+                break;
         }
 
         return {data};
