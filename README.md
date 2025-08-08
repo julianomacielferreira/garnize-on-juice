@@ -23,6 +23,10 @@ O objetivo é processar o máximo de pagamentos possível.
 
 ### Diagramas
 
+Para criá-los utilizei uma mesa digitalizadora wacom.
+
+![Wacom](static/mesa-digitalizadora-wacom.jpg)
+
 Primeiro cenário desenvolvido:
 
 - Requests para o processador de pagamentos padrão.
@@ -46,6 +50,8 @@ Primeiro cenário desenvolvido:
 [Docker](https://docs.docker.com/)
 
 [Build Your Own Redis with C/C++](https://build-your-own.org/redis/)
+
+[Mesa Digitalizadora One By Wacom CTL472, Pequena, Cor Preto e Vermelho](https://www.mercadolivre.com.br/mesa-digitalizadora-one-by-wacom-ctl472-pequena-cor-preto-e-vermelho)
 
 # License
 
