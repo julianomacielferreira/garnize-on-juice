@@ -44,8 +44,8 @@
 .idea
 
 # vscode
-.vscode
 !.vscode/launch.json
+.vscode/settings.json
 
 # Executable
 garnize_on_juice
