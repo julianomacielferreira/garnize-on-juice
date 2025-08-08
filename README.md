@@ -43,6 +43,37 @@ Primeiro cenário desenvolvido:
 
 @TODO
 
+### Detalhes Técnicos
+
+Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
+
+ ```c++
+    /**
+     * @brief Remove os espaços em branco desnecessários de uma string JSON.
+     *
+     * Essa função utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
+     *
+     * @param jsonString A string JSON a ser processada.
+     * @return A string JSON com os espaços em branco desnecessários removidos.
+     */
+    static string removeUnnecessarySpaces(const string &jsonString)
+    {
+        return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
+    }
+ ```
+
+- ``\\s+``: Essa parte da expressão regular busca por um ou mais espaços em branco (\s é o caractere especial para espaços em branco, e o + significa "um ou mais"). O ``\\`` é usado para escapar o caractere ``\`` porque em C++ o ``\`` é um caractere especial.
+- ``(?=...)``: Essa é uma "asserção de lookahead" positiva. Ela verifica se a expressão regular dentro dos parênteses é verdadeira, mas não consome os caracteres. Em outras palavras, ela verifica se a condição é satisfeita sem incluir os caracteres na correspondência.
+- ``([^\"']*[\"'][^\"']*[\"'])*``: Essa parte da expressão regular verifica se o espaço em branco está dentro ou fora de uma string delimitada por aspas. Ela funciona da seguinte forma:
+- ``[^\"']*``: Busca por zero ou mais caracteres que não são aspas (``[^\"']`` é uma classe de caracteres negada que inclui todos os caracteres exceto aspas).
+- ``[\"']``: Busca por uma aspa (``[\"']`` é uma classe de caracteres que inclui aspas duplas e simples).
+- ``[^\"']*``: Busca por zero ou mais caracteres que não são aspas novamente.
+- ``[\"']``: Busca por outra aspa.
+- ``*``: O asterisco significa "zero ou mais" da expressão anterior. Isso permite que a expressão regular verifique se há um número par de aspas (ou seja, se as aspas estão balanceadas).
+- ``[^\"']*$``: Essa parte da expressão regular verifica se a string restante não contém aspas. O ``*`` significa "zero ou mais" caracteres que não são aspas, e o ``$`` significa "fim da string".
+
+
+
 ## Referências
 
 [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025)
