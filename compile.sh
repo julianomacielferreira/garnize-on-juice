@@ -41,3 +41,16 @@ else
   # Define o nome do executável padrão.
   OUTPUT_NAME="garnize_on_juice"
 fi
+
+# Compila o código C++ usando as flags de compilação definidas.
+g++ $COMPILER_FLAGS -o $OUTPUT_NAME src/main.cpp
+
+# Verifica se a compilação foi bem-sucedida.
+if [ $? -eq 0 ]; then
+  # Se foi bem-sucedida, executa o programa.
+  ./$OUTPUT_NAME
+else
+  # Se não foi bem-sucedida, imprime uma mensagem de erro e sai do script.
+  echo "Erro ao compilar"
+  exit 1
+fi
