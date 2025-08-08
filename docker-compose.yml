@@ -1,0 +1,16 @@
+version: "3"
+services:
+  garnize-on-juice:
+    build: .
+    ports:
+      - "9999:9999"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.15"
+          memory: "100MB"
+
+networks:
+  payment-processor:
+    name: payment-processor
+    driver: bridge
