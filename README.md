@@ -35,19 +35,12 @@ O objetivo é processar o máximo de pagamentos possível.
 
 [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025)
 
-[RESTinio](https://stiffstream.com/en/products/restinio.html)
-
 [Cpp Reference](https://cppreference.com/)
 
 [ISO Cpp](https://isocpp.org/)
 
-[libasio-dev a cross-platform C++ library for network programming ](https://packages.debian.org/sid/libasio-dev)
-
-[POSIX thread (pthread) libraries](https://www.cs.cmu.edu/afs/cs/academic/class/15492-f07/www/pthreads.html)
-
 [Docker](https://docs.docker.com/)
 
-[CLion](https://www.jetbrains.com/pt-br/clion/)
 
 # License
 
