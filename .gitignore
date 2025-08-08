@@ -45,6 +45,7 @@
 
 # vscode
 .vscode
+!.vscode/launch.json
 
 # Executable
 garnize_on_juice
