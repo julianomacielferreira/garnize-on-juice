@@ -207,42 +207,44 @@ public:
 };
 
 /**
- * @brief Retorna o timestamp atual no formato ISO 8601 em UTC.
- *
- * O formato retornado é "YYYY-MM-DDTHH:MM:SS.sssZ", onde:
- * - YYYY é o ano em 4 dígitos
- * - MM é o mês em 2 dígitos
- * - DD é o dia do mês em 2 dígitos
- * - T é o caractere separador entre data e hora
- * - HH é a hora em 24 horas
- * - MM é o minuto
- * - SS é o segundo
- * - sss é a fração de segundo em milissegundos
- * - Z é o caractere que indica que o tempo está em UTC
- *
- * @return std::string Timestamp no formato ISO 8601 em UTC.
+ * @brief Classe responsável por fornecer utilitários de tempo.
  */
-string getTimestampUTC()
+class TimeUtils
 {
-    // Obter o tempo atual em UTC
-    auto now = chrono::system_clock::now();
+public:
+    /**
+     * @brief Retorna o timestamp atual no formato ISO 8601 em UTC.
+     *
+     * O formato retornado é "YYYY-MM-DDTHH:MM:SS.sssZ", onde:
+     * - YYYY é o ano em 4 dígitos
+     * - MM é o mês em 2 dígitos
+     * - DD é o dia do mês em 2 dígitos
+     * - T é o caractere separador entre data e hora
+     * - HH é a hora em 24 horas
+     * - MM é o minuto
+     * - SS é o segundo
+     * - sss é a fração de segundo em milissegundos
+     * - Z é o caractere que indica que o tempo está em UTC
+     *
+     * @return std::string Timestamp no formato ISO 8601 em UTC.
+     */
+    static string getTimestampUTC()
+    {
+        // Obter o tempo atual em UTC
+        auto now = chrono::system_clock::now();
+        auto now_time_t = chrono::system_clock::to_time_t(now);
+        auto now_tm = *gmtime(&now_time_t);
 
-    auto now_time_t = chrono::system_clock::to_time_t(now);
+        // Formatar a data e hora no formato ISO
+        ostringstream oss;
+        oss << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
+        auto fracao_segundo = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        oss << "." << setfill('0') << setw(3) << fracao_segundo.count() << "Z";
 
-    auto now_tm = *gmtime(&now_time_t);
-
-    // Formatar a data e hora no formato ISO
-    ostringstream oss;
-
-    oss << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
-
-    auto fracao_segundo = std::chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
-
-    oss << "." << setfill('0') << setw(3) << fracao_segundo.count() << "Z";
-
-    // Retornar o timestamp
-    return oss.str();
-}
+        // Retornar o timestamp
+        return oss.str();
+    }
+};
 
 /**
  * @brief Estrutura que representa um pagamento.
@@ -298,7 +300,7 @@ string handlePostPayment(const string &body)
     Payment payment;
     payment.correlationId = correlationId;
     payment.amount = amount;
-    payment.date = getTimestampUTC();
+    payment.date = TimeUtils::getTimestampUTC();
     payments[correlationId] = payment;
 
     // Aqui adicionar uma chamada a rinha
