@@ -23,6 +23,10 @@ O objetivo é processar o máximo de pagamentos possível.
 
 ### Diagramas
 
+Primeiro cenário desenvolvido:
+
+- Requests para o processador de pagamentos padrão.
+
 ![Basic Diagram](static/basic-diagram.png)
 
 @TODO
