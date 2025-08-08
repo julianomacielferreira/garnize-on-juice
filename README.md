@@ -41,6 +41,7 @@ Primeiro cenário desenvolvido:
 
 ### Estrutura do Projeto
 
+```
 .
 ├── compile.sh
 ├── docker-compose.yml
@@ -53,7 +54,7 @@ Primeiro cenário desenvolvido:
     ├── basic-diagram.png
     ├── garnize-on-juice.png
     └── mesa-digitalizadora-wacom.jpg
-
+```
 
 ### Detalhes Técnicos
 
