@@ -51,7 +51,7 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
     /**
      * @brief Remove os espaços em branco desnecessários de uma string JSON.
      *
-     * Essa função utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
+     * Esse método utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
      *
      * @param jsonString A string JSON a ser processada.
      * @return A string JSON com os espaços em branco desnecessários removidos.

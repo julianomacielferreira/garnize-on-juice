@@ -28,6 +28,7 @@
 #include <chrono>
 #include <map>
 #include <vector>
+#include <regex>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -87,14 +88,14 @@ public:
     /**
      * @brief Construtor que inicia o temporizador.
      *
-     * Registra o ponto de tempo atual utilizando `std::chrono::high_resolution_clock`.
+     * Registra o tempo atual utilizando `std::chrono::high_resolution_clock`.
      */
     Timer() : start(chrono::high_resolution_clock::now()) {}
 
     /**
      * @brief Destrutor que para o temporizador e imprime o tempo decorrido.
      *
-     * Calcula a duração entre os pontos de tempo de início e fim e imprime
+     * Calcula a duração entre o tempo de início e fim e imprime
      * o resultado no console.
      */
     ~Timer()
@@ -121,6 +122,19 @@ class JsonParser
 {
 public:
     /**
+     * @brief Remove os espaços em branco desnecessários de uma string JSON.
+     *
+     * Esse método utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
+     *
+     * @param jsonString A string JSON a ser processada.
+     * @return A string JSON com os espaços em branco desnecessários removidos.
+     */
+    static string removeUnnecessarySpaces(const string &jsonString)
+    {
+        return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
+    }
+
+    /**
      * @brief Faz o parse de um JSON e retorna um array com um map content os valores.
      *
      * @param jsonString String JSON a ser parseada.
@@ -128,6 +142,29 @@ public:
      */
     static vector<map<string, string>> parseJson(const string &jsonString)
     {
+        map<string, string> data;
+        size_t pos = 0;
+
+        while (pos < jsonString.size())
+        {
+            // Verifica qual a posicao que tem " (aspas duplas) ou ' (aspas simples)
+            if (jsonString[pos] == '"' || jsonString[pos] == '\'')
+            {
+                char quote = jsonString[pos];
+
+                size_t keyEnd = jsonString.find(quote, pos + 1);
+
+                string key = jsonString.substr(pos + 1, keyEnd - pos - 1);
+
+                pos = jsonString.find(':', keyEnd);
+
+                pos++; // pula o : (dois pontos)
+
+                while (jsonString[pos] == ' ') pos++; // pula espaços
+            }
+        }
+
+        return {data};
     }
 }
 
