@@ -41,7 +41,19 @@ Primeiro cenário desenvolvido:
 
 ### Estrutura do Projeto
 
-@TODO
+.
+├── compile.sh
+├── docker-compose.yml
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── src
+│   └── main.cpp
+└── static
+    ├── basic-diagram.png
+    ├── garnize-on-juice.png
+    └── mesa-digitalizadora-wacom.jpg
+
 
 ### Detalhes Técnicos
 
