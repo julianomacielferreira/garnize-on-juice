@@ -86,6 +86,8 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
 
 [Build Your Own Redis with C/C++](https://build-your-own.org/redis/)
 
+[The Linux Programming Interface by Michael Kerrisk.](https://man7.org/tlpi/)
+
 [Mesa Digitalizadora One By Wacom CTL472, Pequena, Cor Preto e Vermelho](https://www.mercadolivre.com.br/mesa-digitalizadora-one-by-wacom-ctl472-pequena-cor-preto-e-vermelho)
 
 # License
