@@ -1,9 +1,5 @@
 #!/bin/bash
-# Production
-# g++ -std=c++17 -Wall -Wextra -O2 -o garnize_on_juice src/main.cpp
 
-# Debug
-g++ -std=c++17 -Wall -Wextra -fdiagnostics-color=always -g -o garnize_on_juice src/main.cpp
+# Define a variável DEBUG com valor 0, que será usada para determinar se o modo de depuração está ativado ou não.
+DEBUG=0
 
-# Running
-./garnize_on_juice
