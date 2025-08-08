@@ -75,7 +75,7 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
     }
  ```
 
-- ``\\s+``: Essa parte da expressão regular busca por um ou mais espaços em branco (\s é o caractere especial para espaços em branco, e o + significa "um ou mais"). O ``\\`` é usado para escapar o caractere ``\`` porque em C++ o ``\`` é um caractere especial.
+- ``\\s+``: Essa parte da expressão regular busca por um ou mais espaços em branco (``\s`` é o caractere especial para espaços em branco, e o ``+`` significa "um ou mais"). O ``\\`` é usado para escapar o caractere ``\`` porque em C++ o ``\`` é um caractere especial.
 - ``(?=...)``: Essa é uma "asserção de lookahead" positiva. Ela verifica se a expressão regular dentro dos parênteses é verdadeira, mas não consome os caracteres. Em outras palavras, ela verifica se a condição é satisfeita sem incluir os caracteres na correspondência.
 - ``([^\"']*[\"'][^\"']*[\"'])*``: Essa parte da expressão regular verifica se o espaço em branco está dentro ou fora de uma string delimitada por aspas. Ela funciona da seguinte forma:
 - ``[^\"']*``: Busca por zero ou mais caracteres que não são aspas (``[^\"']`` é uma classe de caracteres negada que inclui todos os caracteres exceto aspas).
