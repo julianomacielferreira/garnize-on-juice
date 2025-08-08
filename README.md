@@ -41,6 +41,7 @@ O objetivo é processar o máximo de pagamentos possível.
 
 [Docker](https://docs.docker.com/)
 
+[Build your own Redis](https://build-your-own.org/redis/)
 
 # License
 
