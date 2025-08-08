@@ -15,6 +15,10 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ```
 
+### Como compilar e rodar o Projeto
+
+@TODO
+
 ### Objetivo
 
 Desenvolver uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços. 
