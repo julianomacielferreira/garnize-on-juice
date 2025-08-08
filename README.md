@@ -2,6 +2,8 @@
 
 Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025).
 
+Veja a seção ``Detalhes Técnicos e Possíveis Melhorias`` mais abaixo, para entender melhor a solução e também suas possíveis melhorias.
+
 ![Garnize On Juice](static/garnize-on-juice.png)
 
 ### O que é a Rinha do Backend
@@ -36,6 +38,10 @@ conhecimento! Esta é a terceira edição do desafio.
 
 @TODO
 
+### Rodar com Docker compose
+
+@TODO
+
 ### Objetivo
 
 Desenvolver uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços. 
@@ -56,9 +62,13 @@ Primeiro cenário desenvolvido:
 
 @TODO
 
-### Detalhes Técnicos
+### Detalhes Técnicos e Possíveis Melhorias
 
-Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
+#### Estratura de classes criada
+
+@TODO
+
+#### Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
 
  ```c++
     /**
@@ -86,6 +96,39 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
 - ``[^\"']*$``: Essa parte da expressão regular verifica se a string restante não contém aspas. O ``*`` significa "zero ou mais" caracteres que não são aspas, e o ``$`` significa "fim da string".
 
 
+#### O método ``parseJson()`` da classe ``JsonParser`` não trata todos possíveis casos que podem ocorrer em um JSON. 
+
+Abaixo, estão listados casos que devem ser tratados em um cenário mais real.
+
+**1. Estrutura de objetos:**
+- Objetos vazios (``{}``)
+- Objetos com uma ou mais chaves-valor (``{"chave": "valor"}``)
+- Objetos aninhados (``{"chave": {"outraChave": "valor"}}``)
+
+**2. Tipos de valores:**
+- Números (``123``, ``3.14``)
+- Booleanos (``true``, ``false``)
+- Null (``null``)
+- Arrays (``[1, 2, 3]``)
+
+**3. Chaves:**
+- Chaves com strings complexas (``"chave com espaços" ou "chave com caracteres especiais: !@#$%^&*()"``)
+
+**4. Valores:**
+- Valores com strings complexas (``"valor com espaços" ou "valor com caracteres especiais: !@#$%^&*()"``)
+
+**5. Arrays:**
+- Arrays vazios (``[]``)
+- Arrays com um ou mais elementos (``[1, 2, 3]``)
+- Arrays aninhados (``[1, [2, 3], 4]``)
+
+**6. Erros de sintaxe:**
+- Chaves ou valores não fechados (``{"chave": "valor"``)
+- Vírgulas ou dois-pontos faltando (``{"chave" "valor"}``)
+- Caracteres inválidos
+
+**7. Espaçamento:**
+- Espaçamento dentro de strings (``"valor com espaços"``)
 
 ## Referências
 
@@ -96,6 +139,8 @@ Explicação sobre a expressão regular utilizada para remover espaços em branc
 [Cpp Reference](https://cppreference.com/)
 
 [ISO Cpp](https://isocpp.org/)
+
+[The Shell Scripting Tutorial](https://www.shellscript.sh/)
 
 [Docker](https://docs.docker.com/)
 
