@@ -72,6 +72,20 @@ public:
     inline static const string INVALID_REQUEST_MSG = "Requisição inválida";
 
     /**
+     * @brief Chave para o ID de correlação em uma requisição.
+     *
+     * Essa constante define a chave padrão para o campo "correlationId" em uma requisição.
+     */
+    inline static const string KEY_CORRELATION_ID = "correlationId";
+
+    /**
+     * @brief Chave para o valor do amount em uma requisição.
+     *
+     * Essa constante define a chave padrão para o campo "amount" em uma requisição.
+     */
+    inline static const string KEY_AMOUNT = "amount";
+
+    /**
      * @brief URL padrão do processador de pagamentos.
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
@@ -162,12 +176,12 @@ class JsonParser
 {
 public:
     /**
-     * @brief Faz o parse de um JSON e retorna um array com um map content os valores.
+     * @brief Faz o parse de um JSON e retorna um map content os valores.
      *
      * @param jsonString String JSON a ser parseada.
-     * @return std::vector<std::map<std::string, std::string>> Array com um map contendo os valores
+     * @return std::map<std::string, std::string> Um map contendo os valores
      */
-    static vector<map<string, string>> parseJson(const string &jsonString)
+    static map<string, string> parseJson(const string &jsonString)
     {
 
         const string JSON = removeUnnecessarySpaces(jsonString);
@@ -190,6 +204,7 @@ public:
             // Encontra o início do valor
             pos = JSON.find(':', keyEnd) + 1;
 
+            // Encontra o fim do valor, que pode ser uma vírgula ou o fechamento do objeto.
             size_t valueEnd = JSON.find_first_of(",}", pos);
 
             if (valueEnd == string::npos)
@@ -213,7 +228,7 @@ public:
                 break;
         }
 
-        return {data};
+        return data;
     }
 
 private:
@@ -355,34 +370,34 @@ string handlePostPayment(const string &body)
 {
     Timer timer;
 
+    size_t pos = body.find(Constants::KEY_CORRELATION_ID);
+
+    if (pos == string::npos)
+    {
+        // Retornar um json de request invalida (faltou parametro 'amount')
+        return Constants::BAD_REQUEST_RESPONSE;
+    }
+
+    pos = body.find(Constants::KEY_AMOUNT);
+
+    if (pos == string::npos)
+    {
+        // Retornar um json de request invalida (faltou parametro 'amount')
+        return Constants::BAD_REQUEST_RESPONSE;
+    }
+
     // Parse do corpo da requisição
-    auto json = JsonParser::parseJson(body);
+    map<string, string> json = JsonParser::parseJson(body);
 
-    size_t pos = body.find("correlationId");
-
-    if (pos == string::npos)
-    {
-        // Retornar um json de request invalida (faltou parametro 'amount')
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
-
-    string correlationId = body.substr(pos + 14);
-
-    pos = body.find("amount");
-
-    if (pos == string::npos)
-    {
-        // Retornar um json de request invalida (faltou parametro 'amount')
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
-
-    double amount = stod(body.substr(pos + 7));
+    string correlationId = json.at(Constants::KEY_CORRELATION_ID);
+    double amount = stod(json.at(Constants::KEY_AMOUNT));
 
     // Armazena o pagamento
     Payment payment;
     payment.correlationId = correlationId;
     payment.amount = amount;
     payment.date = TimeUtils::getTimestampUTC();
+
     payments[correlationId] = payment;
 
     // Aqui adicionar uma chamada a rinha
