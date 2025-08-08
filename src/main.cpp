@@ -45,7 +45,29 @@ public:
      * @brief Porta padrão para o servidor.
      */
     static const uint16_t PORT = 9999;
+
+    /**
+     * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
+     */
+    inline static const string BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n";
+
+    /**
+     * @brief Resposta HTTP padrão para recursos não encontrados (404 Not Found).
+     */
+    inline static const string NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n\r\n";
+
+    /**
+     * @brief URL padrão do processador de pagamentos.
+     *
+     * Essa URL é usada como padrão quando não há outra configuração específica.
+     */
     inline static const string PROCESSOR_DEFAULT = "http://payment-processor-default:8080";
+
+    /**
+     * @brief URL de fallback do processador de pagamentos.
+     *
+     * Essa URL é usada como fallback quando o processador de pagamentos padrão não está disponível.
+     */
     inline static const string PROCESSOR_FALLBACK = "http://payment-processor-fallback:8080";
 };
 
@@ -281,7 +303,7 @@ string handlePostPayment(const string &body)
     if (pos == string::npos)
     {
         // Retornar um json de request invalida (faltou parametro 'amount')
-        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+        return Constants::BAD_REQUEST_RESPONSE;
     }
 
     string correlationId = body.substr(pos + 14);
@@ -291,7 +313,7 @@ string handlePostPayment(const string &body)
     if (pos == string::npos)
     {
         // Retornar um json de request invalida (faltou parametro 'amount')
-        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+        return Constants::BAD_REQUEST_RESPONSE;
     }
 
     double amount = stod(body.substr(pos + 7));
@@ -317,7 +339,7 @@ string handleGetPaymentSummary(const string &query)
     size_t pos = query.find("from=");
     if (pos == string::npos)
     {
-        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+        return Constants::BAD_REQUEST_RESPONSE;
     }
 
     string from = query.substr(pos + 5);
@@ -325,7 +347,7 @@ string handleGetPaymentSummary(const string &query)
     pos = query.find("to=");
     if (pos == string::npos)
     {
-        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+        return Constants::BAD_REQUEST_RESPONSE;
     }
 
     string to = query.substr(pos + 3);
@@ -436,7 +458,7 @@ int main()
             }
             else
             {
-                string response = "HTTP/1.1 400 Bad Request\r\n\r\n";
+                string response = Constants::BAD_REQUEST_RESPONSE;
                 send(new_socket, response.c_str(), response.size(), 0);
             }
         }
@@ -455,13 +477,13 @@ int main()
             }
             else
             {
-                string response = "HTTP/1.1 400 Bad Request\r\n\r\n";
+                string response = Constants::BAD_REQUEST_RESPONSE;
                 send(new_socket, response.c_str(), response.size(), 0);
             }
         }
         else
         {
-            string response = "HTTP/1.1 404 Not Found\r\n\r\n";
+            string response = Constants::NOT_FOUND_RESPONSE;
             send(new_socket, response.c_str(), response.size(), 0);
         }
 
