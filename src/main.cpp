@@ -122,19 +122,6 @@ class JsonParser
 {
 public:
     /**
-     * @brief Remove os espaços em branco desnecessários de uma string JSON.
-     *
-     * Esse método utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
-     *
-     * @param jsonString A string JSON a ser processada.
-     * @return A string JSON com os espaços em branco desnecessários removidos.
-     */
-    static string removeUnnecessarySpaces(const string &jsonString)
-    {
-        return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
-    }
-
-    /**
      * @brief Faz o parse de um JSON e retorna um array com um map content os valores.
      *
      * @param jsonString String JSON a ser parseada.
@@ -170,6 +157,20 @@ public:
         }
 
         return {data};
+    }
+
+private:
+    /**
+     * @brief Remove os espaços em branco desnecessários de uma string JSON.
+     *
+     * Esse método utiliza uma expressão regular para remover os espaços em branco que não estão dentro de strings delimitadas por aspas.
+     *
+     * @param jsonString A string JSON a ser processada.
+     * @return A string JSON com os espaços em branco desnecessários removidos.
+     */
+    static string removeUnnecessarySpaces(const string &jsonString)
+    {
+        return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
     }
 };
 
