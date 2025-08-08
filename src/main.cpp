@@ -142,31 +142,25 @@ public:
      */
     static vector<map<string, string>> parseJson(const string &jsonString)
     {
+
+        string jsonStringCleaned = removeUnnecessarySpaces(jsonString);
+        jsonStringCleaned = jsonStringCleaned.substr(1, jsonStringCleaned.size() - 2); // Remove as chaves {}
+
         map<string, string> data;
         size_t pos = 0;
 
-        while (pos < jsonString.size())
+        while (pos < jsonStringCleaned.size())
         {
-            // Verifica qual a posicao que tem " (aspas duplas) ou ' (aspas simples)
-            if (jsonString[pos] == '"' || jsonString[pos] == '\'')
-            {
-                char quote = jsonString[pos];
+            size_t keyEnd = jsonStringCleaned.find(':');
 
-                size_t keyEnd = jsonString.find(quote, pos + 1);
+            string key = jsonStringCleaned.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
 
-                string key = jsonString.substr(pos + 1, keyEnd - pos - 1);
-
-                pos = jsonString.find(':', keyEnd);
-
-                pos++; // pula o : (dois pontos)
-
-                while (jsonString[pos] == ' ') pos++; // pula espaços
-            }
+            pos = keyEnd + 1;
         }
 
         return {data};
     }
-}
+};
 
 /**
  * @brief Classe que fornece métodos para parsear requisições HTTP.
