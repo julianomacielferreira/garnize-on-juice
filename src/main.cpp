@@ -133,9 +133,12 @@ public:
     ~Timer()
     {
         auto end = chrono::high_resolution_clock::now();
-        auto duration = chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        auto duration_ms = chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        auto duration_us = chrono::duration_cast<std::chrono::microseconds>(end - start);
+        auto duration_ns = chrono::duration_cast<std::chrono::nanoseconds>(end - start);
 
-        cout << "Tempo de execução da request: " << duration.count() << " ms" << endl;
+        cout << "Tempo de execução da request: " << duration_ms.count() << " ms ("
+             << duration_us.count() << " us / " << duration_ns.count() << " ns)" << endl;
     }
 
 private:
