@@ -165,26 +165,26 @@ public:
     static vector<map<string, string>> parseJson(const string &jsonString)
     {
 
-        string json = removeUnnecessarySpaces(jsonString);
-        json = json.substr(1, json.size() - 2); // Remove as chaves {}
+        string JSON = removeUnnecessarySpaces(jsonString);
+        JSON = JSON.substr(1, JSON.size() - 2); // Remove as chaves {}
 
         map<string, string> data;
         size_t pos = 0;
 
-        while (pos < json.size())
+        while (pos < JSON.size())
         {
-            size_t keyEnd = json.find(':');
+            size_t keyEnd = JSON.find(':', pos);
 
-            string key = json.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
+            string key = JSON.substr(pos + 1, keyEnd - pos - 2); // remove as aspas
 
             pos = keyEnd + 1;
 
-            size_t valueEnd = json.find(',', pos);
+            size_t valueEnd = JSON.find(',', pos);
 
             if (valueEnd == string::npos)
-                valueEnd = json.size();
+                valueEnd = JSON.size();
 
-            string value = json.substr(pos + 1, valueEnd - pos - 2); // remove as aspas
+            string value = JSON.substr(pos + 1, valueEnd - pos - 2); // remove as aspas
 
             data[key] = value;
 
@@ -205,7 +205,7 @@ private:
      */
     static string removeUnnecessarySpaces(const string &jsonString)
     {
-        return regex_replace(jsonString, regex("\\s+(?=([^\"']*[\"'][^\"']*[\"'])*[^\"']*$"), "");
+        return regex_replace(jsonString, regex("\\s+(?=(?:[^\"']*[\"'][^\"']*[\"'])*[^\"']*$)"), "");
     }
 };
 
@@ -311,7 +311,7 @@ string handlePostPayment(const string &body)
     Timer timer;
 
     // Parse do corpo da requisição
-    size_t pos = body.find("correlationId=");
+    size_t pos = body.find("correlationId");
 
     if (pos == string::npos)
     {
@@ -321,7 +321,7 @@ string handlePostPayment(const string &body)
 
     string correlationId = body.substr(pos + 14);
 
-    pos = body.find("amount=");
+    pos = body.find("amount");
 
     if (pos == string::npos)
     {
@@ -421,7 +421,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando requests POST e GET");
+    LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET");
 
     while (true)
     {
