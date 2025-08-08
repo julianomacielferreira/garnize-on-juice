@@ -22,3 +22,22 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Define as flags de compilação padrão.
+COMPILER_FLAGS="-std=c++17 -Wall -Wextra"
+
+# Verifica se o modo de depuração está ativado.
+if [ $DEBUG -eq 1 ]; then
+
+  # Se estiver ativado, adiciona as flags de depuração às flags de compilação.
+  COMPILER_FLAGS+=" -fdiagnostics-color=always -g"
+
+  # Define o nome do executável para incluir "_debug".
+  OUTPUT_NAME="garnize_on_juice_debug"
+else
+
+  # Se não estiver ativado, adiciona a flag de otimização às flags de compilação.
+  COMPILER_FLAGS+=" -O2"
+
+  # Define o nome do executável padrão.
+  OUTPUT_NAME="garnize_on_juice"
+fi
