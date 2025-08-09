@@ -29,6 +29,7 @@
 #include <map>
 #include <vector>
 #include <regex>
+#include <thread>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -492,20 +493,142 @@ private:
 map<string, Payment> PaymentProcessor::payments;
 
 /**
- * @brief Ponto de entrada do programa.
+ * @brief Classe responsável por lidar com requisições recebidas em um socket.
  *
- * Esse método é responsável por iniciar o servidor e lidar com requisições HTTP.
- * Ele cria um socket, bind ao endereço e porta especificados, e escuta conexões.
- * Quando uma conexão é estabelecida, ele lê a requisição, parseia o método e o caminho,
- * e chama o método correspondente para lidar com a requisição.
+ * Essa classe fornece um método estático para lidar com requisições recebidas em um socket.
  *
- * O servidor suporta requisições POST para /payments e GET para /payments-summary.
+ */
+class RequestHandler
+{
+public:
+    /**
+     * @brief Lida com uma requisição recebida em um socket.
+     *
+     * Essa função lê a requisição do socket, parseia o método e o caminho da requisição,
+     * e então processa a requisição de acordo com o método e o caminho.
+     *
+     * @param socket O socket que recebeu a requisição.
+     *
+     * @details
+     * A função segue os seguintes passos:
+     * 1. Lê a requisição do socket e armazena em um buffer.
+     * 2. Parseia o método e o caminho da requisição.
+     * 3. Verifica se o método e o caminho são válidos e processa a requisição de acordo.
+     * 4. Envia uma resposta ao cliente.
+     * 5. Fecha a conexão.
+     *
+     * @note
+     * A função assume que o socket é válido e que a requisição é bem-formada.
+     * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
+     */
+    static void handle(int socket)
+    {
+
+        // O número 1024 é usado aqui como o tamanho do buffer para ler os dados da conexão de rede.
+        // Isso significa que o programa está alocando um espaço de memória de 1024 bytes para armazenar os dados que estão sendo lidos da conexão.
+        char buffer[Constants::BUFFER_SIZE];
+
+        // Ler a requisição
+        read(socket, buffer, Constants::BUFFER_SIZE);
+
+        string request(buffer);
+
+        // Parse da requisição
+        size_t pos = request.find(" ");
+
+        if (pos == string::npos)
+        {
+            LOGGER::error(Constants::INVALID_REQUEST_MSG);
+            return;
+        }
+
+        string method = request.substr(0, pos);
+
+        pos = request.find(" ", pos + 1);
+
+        if (pos == string::npos)
+        {
+            LOGGER::error(Constants::INVALID_REQUEST_MSG);
+            return;
+        }
+
+        string path = HttpRequestParser::extractMethod(request);
+
+        if (method == "POST" && path == "/payments")
+        {
+            LOGGER::info("POST request para /payments");
+
+            size_t bodyPos = request.find("\r\n\r\n");
+
+            if (bodyPos != string::npos)
+            {
+                string body = request.substr(bodyPos + 4);
+                string response = PaymentProcessor::payment(body);
+                send(socket, response.c_str(), response.size(), 0);
+            }
+            else
+            {
+                string response = Constants::BAD_REQUEST_RESPONSE;
+                send(socket, response.c_str(), response.size(), 0);
+            }
+        }
+        else if (method == "GET" && path.find("/payments-summary") == 0)
+        {
+
+            LOGGER::info("GET request para /payments-summary");
+
+            size_t queryPos = path.find("?");
+
+            if (queryPos != string::npos)
+            {
+                string query = path.substr(queryPos + 1);
+                string response = PaymentProcessor::paymentSummary(query);
+                send(socket, response.c_str(), response.size(), 0);
+            }
+            else
+            {
+                string response = Constants::BAD_REQUEST_RESPONSE;
+                send(socket, response.c_str(), response.size(), 0);
+            }
+        }
+        else
+        {
+            string response = Constants::NOT_FOUND_RESPONSE;
+            send(socket, response.c_str(), response.size(), 0);
+        }
+
+        // Fechar a conexão
+        close(socket);
+    }
+};
+
+/**
+ * @brief Função principal do programa que inicia o servidor.
  *
- * @return Código de saída do programa. EXIT_SUCCESS se o programa executar com sucesso, EXIT_FAILURE caso contrário.
+ * Essa função é responsável por criar o socket, bindá-lo ao endereço e porta especificados,
+ * e escutar conexões. Quando uma conexão é estabelecida, a função cria uma thread para
+ * lidar com a requisição.
+ *
+ * @return int O código de saída do programa.
+ *
+ * @details
+ * A função segue os seguintes passos:
+ * 1. Cria um socket usando a função `socket`.
+ * 2. Configura a opção `SO_REUSEADDR` para permitir que o socket seja reutilizado.
+ * 3. Bind o socket ao endereço e porta especificados.
+ * 4. Escuta conexões usando a função `listen`.
+ * 5. Aceita conexões e cria uma thread para lidar com cada requisição.
+ *
+ * @note
+ * A função usa a biblioteca `thread` para criar threads que lidam com as requisições.
+ * A função também usa a classe `LOGGER` para registrar erros e informações.
+ *
+ * @see
+ * handleRequest: Função que lida com as requisições recebidas.
  */
 int main()
 {
-    int server_fd, new_socket;
+    int server_fd;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
 
@@ -547,84 +670,15 @@ int main()
     while (true)
     {
         // Aceitar uma conexão
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
+        int new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+        if (new_socket < 0)
         {
             LOGGER::error("Falha ao aceitar conexão");
             continue;
         }
 
-        // O número 1024 é usado aqui como o tamanho do buffer para ler os dados da conexão de rede.
-        // Isso significa que o programa está alocando um espaço de memória de 1024 bytes para armazenar os dados que estão sendo lidos da conexão.
-        char buffer[Constants::BUFFER_SIZE];
-        // Ler a requisição
-        read(new_socket, buffer, Constants::BUFFER_SIZE);
-        string request(buffer);
-
-        // Parse da requisição
-        size_t pos = request.find(" ");
-        if (pos == string::npos)
-        {
-            LOGGER::error(Constants::INVALID_REQUEST_MSG);
-            continue;
-        }
-
-        string method = request.substr(0, pos);
-
-        pos = request.find(" ", pos + 1);
-
-        if (pos == string::npos)
-        {
-            LOGGER::error(Constants::INVALID_REQUEST_MSG);
-            continue;
-        }
-
-        string path = HttpRequestParser::extractMethod(request);
-
-        if (method == "POST" && path == "/payments")
-        {
-            LOGGER::info("POST request para /payments");
-
-            size_t bodyPos = request.find("\r\n\r\n");
-
-            if (bodyPos != string::npos)
-            {
-                string body = request.substr(bodyPos + 4);
-                string response = PaymentProcessor::payment(body);
-                send(new_socket, response.c_str(), response.size(), 0);
-            }
-            else
-            {
-                string response = Constants::BAD_REQUEST_RESPONSE;
-                send(new_socket, response.c_str(), response.size(), 0);
-            }
-        }
-        else if (method == "GET" && path.find("/payments-summary") == 0)
-        {
-
-            LOGGER::info("GET request para /payments-summary");
-
-            size_t queryPos = path.find("?");
-
-            if (queryPos != string::npos)
-            {
-                string query = path.substr(queryPos + 1);
-                string response = PaymentProcessor::paymentSummary(query);
-                send(new_socket, response.c_str(), response.size(), 0);
-            }
-            else
-            {
-                string response = Constants::BAD_REQUEST_RESPONSE;
-                send(new_socket, response.c_str(), response.size(), 0);
-            }
-        }
-        else
-        {
-            string response = Constants::NOT_FOUND_RESPONSE;
-            send(new_socket, response.c_str(), response.size(), 0);
-        }
-
-        // Fechar a conexão
-        close(new_socket);
+        thread thread(RequestHandler::handle, new_socket);
+        thread.detach();
     }
 
     return EXIT_SUCCESS;
