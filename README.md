@@ -34,7 +34,7 @@ conhecimento! Esta é a terceira edição do desafio.
     └── mesa-digitalizadora-wacom.jpg
 ```
 
-### Como compilar e rodar o Projeto
+### Como compilar e rodar o localmente para depuração
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
 
@@ -49,7 +49,7 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 
 <sub>As instruções acima foram testadas somente em ambiente Linux.</sub>
 
-### Rodar com Docker compose
+### Como rodar com Docker
 
 Pré-requisitos
 
