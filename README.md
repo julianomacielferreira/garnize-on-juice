@@ -2,9 +2,9 @@
 
 Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025).
 
-Veja a seção **``Detalhes Técnicos e Possíveis Melhorias``** (mais abaixo) para entender melhor a solução e também suas possíveis melhorias.
+Veja a seção **`Detalhes Técnicos e Possíveis Melhorias`** (mais abaixo) para entender melhor a solução e também suas possíveis melhorias.
 
-Veja a seção **``Desafios``** (mais abaixo) para entender onde o caldo engrossou durante o desenvolvimento.
+Veja a seção **`Desafios`** (mais abaixo) para entender onde o caldo engrossou durante o desenvolvimento.
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
@@ -63,8 +63,8 @@ O objetivo é processar o máximo de pagamentos possível.
 
 ### Desafios
 
-- Escrever a lógica do servidor utilizando sockets (tive que ler várias vezes o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para tratar requisições simultâneas.
-- Parsear o JSON sem usar nenhuma biblioteca (Ex.: ``nlohmann/json``).
+- Escrever a lógica do servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para tratar requisições simultâneas e quais as abordagens possíveis.
+- Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
 
 @TODO
@@ -73,7 +73,7 @@ O objetivo é processar o máximo de pagamentos possível.
 
 #### Estrutura de classes criada
 
-Todas as classes e estruturas estão no arquivo ``main.cpp`` ao 'melhor' estilo javascript. Uma prática recomendada é criar os respectivos arquivos
+Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo javascript. Uma prática recomendada é criar os respectivos arquivos
 de cabeçalhos (headers .h) e separá-las do arquivo principal.
 
 @TODO
@@ -89,7 +89,14 @@ No entanto, é importante notar que o uso de um buffer de tamanho fixo pode ter 
 
 Uma abordagem mais robusta seria usar um buffer dinâmico que possa crescer ou diminuir de acordo com as necessidades da aplicação.
 
-Além disso, a função ``read`` não garante que todos os 1024 bytes sejam lidos de uma vez. É possível que a função retorne um valor menor que 1024, indicando que apenas uma parte dos dados foi lida. Nesse caso, é necessário chamar a função ``read`` novamente para ler o restante dos dados.
+Além disso, a função `read` não garante que todos os 1024 bytes sejam lidos de uma vez. É possível que a função retorne um valor menor que 1024, indicando que apenas uma parte dos dados foi lida. Nesse caso, é necessário chamar a função `read` novamente para ler o restante dos dados.
+
+#### Vantagens na abordagem de usar threads ou async I/O
+
+1. Threads: Com threads, você pode criar uma thread para cada requisição que chega ao servidor. Cada thread pode fazer a requisição ao microserviço e esperar pela resposta sem bloquear as outras threads. Isso permite que o servidor processe múltiplas requisições simultaneamente e não bloqueie enquanto espera pela resposta do microserviço.
+2. Async I/O: Com async I/O, você pode fazer requisições ao microserviço de forma assíncrona, o que significa que o servidor não bloqueia enquanto espera pela resposta. Em vez disso, o servidor pode continuar processando outras requisições e receber notificações quando a resposta do microserviço estiver disponível.
+
+Ambas as abordagens permitem que o servidor processe múltiplas requisições simultaneamente e não bloqueie enquanto espera pela resposta do microserviço. No entanto, a escolha entre threads e async I/O depende do design do seu servidor e das suas necessidades específicas.
 
 #### Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
 
