@@ -51,7 +51,74 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 
 ### Rodar com Docker compose
 
-@TODO
+Pré-requisitos
+
+- Docker e Docker Compose instalados na máquina
+
+Passo a Passo
+
+1. Abra o terminal: Abra o terminal e navegue até a raiz do projeto.
+2. Verifique se o Docker está funcionando: Execute o comando docker --version para verificar se o Docker está instalado e funcionando corretamente.
+
+```bash
+$ docker --version
+```
+```bash
+Docker version 28.1.1, build 4eba377
+```
+
+3. Verifique se o Docker Compose está funcionando: Execute o comando docker-compose --version para verificar se o Docker Compose está instalado e funcionando corretamente.
+
+```bash
+$ docker-compose --version
+```
+```bash
+docker-compose version 1.29.2, build 5becea4c
+```
+
+4. Construa as imagens: Execute o comando docker-compose build para construir as imagens Docker definidas no arquivo docker-compose.yml.
+
+```bash
+$ docker-compose build
+```
+```bash
+WARNING: Some networks were defined but are not used by any service: payment-processor
+Building garnize-on-juice
+[+] Building (11/11) FINISHED
+docker:default
+ => [internal] load build definition from Dockerfile
+ => => transferring dockerfile: 855B
+ => [internal] load metadata for docker.io/library/alpine:latest
+ => [auth] library/alpine:pull token for registry-1.docker.io
+ => [internal] load .dockerignore
+ => => transferring context: 140B
+ => [1/5] FROM docker.io/library/alpine:latest@sha256:4bcff63911fcb4448bd4fdacec207030997caf25e9bea4045fa6c8c44de311d1
+ => [internal] load build context
+ => => transferring context: 2.11MB
+ => CACHED [2/5] RUN apk update && apk add --no-cache alpine-sdk g++ && rm -rf /var/lib/apt/lists/*
+ => CACHED [3/5] WORKDIR /app
+ => [4/5] COPY . /app
+ => [5/5] RUN g++ -std=c++17 -Wall -Wextra -O2 -o garnize_on_juice src/main.cpp
+ => exporting to image
+ => => exporting layers
+ => => writing image sha256:041acf28099a9346a651030e225b73242712924e2bdc1bbeda30319567757a53
+ => => naming to docker.io/library/garnize-on-juice_garnize-on-juice
+
+```
+
+5. Inicie os contêineres: Execute o comando docker-compose up para iniciar os contêineres Docker definidos no arquivo docker-compose.yml.
+
+```bash
+$ docker-compose up
+```
+```bash
+WARNING: Some networks were defined but are not used by any service: payment-processor
+Creating network "garnize-on-juice_default" with the default driver
+Creating garnize-on-juice_garnize-on-juice_1 ... done
+Attaching to garnize-on-juice_garnize-on-juice_1
+garnize-on-juice_1  | Info: Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET
+```
+
 
 ### Objetivo
 
