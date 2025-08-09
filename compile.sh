@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Define as flags de compilação padrão.
-COMPILER_FLAGS="-std=c++17 -Wall -Wextra"
+COMPILER_FLAGS="-std=c++17 -Wall -Wextra -lsqlite3"
 
 # Verifica se o modo de depuração está ativado.
 if [ $DEBUG -eq 1 ]; then
