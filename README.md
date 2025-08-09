@@ -83,9 +83,22 @@ Para criá-los utilizei uma mesa digitalizadora wacom.
 
 ### Detalhes Técnicos e Possíveis Melhorias
 
-#### Estratura de classes criada
+#### Estrutura de classes criada
 
 @TODO
+
+#### Buffer de tamanho fixo para ler dados da conexão
+
+O tamanho de 1024 é comum em muitas aplicações de rede porque é uma potência de 2 (2<sup>10</sup>) e é grande o suficiente para armazenar uma quantidade razoável de dados, mas não tão grande que cause problemas de desempenho ou uso excessivo de memória.
+
+No entanto, é importante notar que o uso de um buffer de tamanho fixo pode ter algumas limitações:
+
+- Se a requisição HTTP for maior que 1024 bytes, ela será truncada e pode causar problemas.
+- Se a requisição HTTP for muito pequena, o buffer pode ter espaço não utilizado.
+
+Uma abordagem mais robusta seria usar um buffer dinâmico que possa crescer ou diminuir de acordo com as necessidades da aplicação.
+
+Além disso, a função ``read`` não garante que todos os 1024 bytes sejam lidos de uma vez. É possível que a função retorne um valor menor que 1024, indicando que apenas uma parte dos dados foi lida. Nesse caso, é necessário chamar a função ``read`` novamente para ler o restante dos dados.
 
 #### Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
 
