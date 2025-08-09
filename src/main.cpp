@@ -385,13 +385,91 @@ public:
         auto now_tm = *gmtime(&now_time_t);
 
         // Formatar a data e hora no formato ISO
-        ostringstream oss;
-        oss << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
-        auto fracao_segundo = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
-        oss << "." << setfill('0') << setw(3) << fracao_segundo.count() << "Z";
+        ostringstream outputStringBuffer;
 
-        // Retornar o timestamp
-        return oss.str();
+        outputStringBuffer << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
+
+        auto fracao_segundo = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
+
+        outputStringBuffer << "." << setfill('0') << setw(3) << fracao_segundo.count() << "Z";
+
+        return outputStringBuffer.str();
+    }
+};
+
+/**
+ * @brief Classe responsável por gerar UUIDs (Universally Unique Identifiers).
+ *
+ * Essa classe fornece um método estático para gerar UUIDs baseados no datetime do sistema.
+ */
+class UUIDGenerator
+{
+public:
+    /**
+     * @brief Gera um UUID baseado no datetime do sistema.
+     *
+     * Esse método usa o datetime do sistema para gerar um UUID. Ele combina o timestamp
+     * do sistema com números aleatórios para criar um UUID único.
+     *
+     * O UUID gerado é uma string no formato `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, onde
+     * cada `x` é um dígito hexadecimal.
+     *
+     * @return Um UUID gerado como uma string.
+     */
+    static string createUUID()
+    {
+        // timestamp do sistema em nanossegundos.
+        auto now = chrono::high_resolution_clock::now();
+
+        // tempo atual em nanossegundos desde a época Unix (1 de janeiro de 1970, 00:00:00 UTC).
+        auto nanos = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
+
+        // Gera números aleatórios para combinar com o timestamp
+        //  Fonte de números aleatórios não determinística, ou seja, gera números aleatórios baseados em eventos aleatórios do sistema.
+        static random_device rd;
+
+        // Gerador de números aleatórios baseado no algoritmo Mersenne Twister.
+        // O objeto gen é inicializado com um valor de semente obtido a partir do objeto rd.
+        // A inicialização com um valor de semente aleatório garante que a sequência de números gerada
+        // seja diferente cada vez que o programa é executado.
+        static mt19937 gen(rd());
+
+        // Usado para gerar números aleatórios uniformemente distribuídos entre 0 e 15 (16 dígitos possíveis do Hexadecimal).
+        uniform_int_distribution<> dis(0, 15);
+
+        // Formata o UUID como uma string
+        stringstream stringBuffer;
+
+        // Configura o stream para usar a notação hexadecimal.
+        stringBuffer << std::hex;
+
+        // Obtém os 32 bits menos significativos do valor nanos.
+        stringBuffer << (nanos & 0xFFFFFFFF);
+        stringBuffer << "-";
+
+        // Obtém os próximos 16 bits do valor nanos.
+        stringBuffer << (nanos >> 32 & 0xFFFF);
+        stringBuffer << "-";
+
+        // Obtém os próximos 12 bits do valor nanos e define os 4 bits mais significativos para 0100, que é a versão 4 do UUID.
+        stringBuffer << ((nanos >> 48 & 0x0FFF) | 0x4000);
+
+        stringBuffer << "-";
+
+        // Gera um valor aleatório para a variante do UUID e define os 2 bits mais significativos para 10,
+        // que é a variante DCE (Distributed Computing Environment).
+        stringBuffer << ((dis(gen) & 0x3) | 0x8);
+
+        // Gera os demais componentes do UUID aleatoriamente.
+        stringBuffer << dis(gen);
+        stringBuffer << "-";
+
+        for (int i = 0; i < 12; i++)
+        {
+            stringBuffer << dis(gen);
+        }
+
+        return stringBuffer.str();
     }
 };
 
@@ -463,9 +541,11 @@ public:
 
         // Cria o payload e chama o default processor ou o fallback
         Payment payment;
-        payment.correlationId = correlationId;
+        payment.correlationId = UUIDGenerator::createUUID();
         payment.amount = amount;
         payment.requestedAt = TimeUtils::getTimestampUTC();
+
+        LOGGER::info("Payment(correlationId=" + payment.correlationId + ", amount=" + std::to_string(payment.amount) + ", requestedAt=" + payment.requestedAt + ")");
 
         /**
          * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
