@@ -9,3 +9,11 @@ docker-compose*
 Dockerfile*
 LICENSE
 README.md
+
+# vscode
+!.vscode/launch.json
+.vscode/settings.json
+
+# Executable
+garnize_on_juice
+garnize_on_juice_debug
