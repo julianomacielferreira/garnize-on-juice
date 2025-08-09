@@ -36,7 +36,7 @@ conhecimento! Esta é a terceira edição do desafio.
     └── mesa-digitalizadora-wacom.jpg
 ```
 
-### Como compilar e rodar o localmente para depuração
+### Como compilar e depurar (com gdb)
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
 
@@ -46,6 +46,21 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 ./compile.sh # Compila com flag de otimização
 ./compile.sh --debug # Compila para depuração
 ```
+
+Para depurar o código, é necessário ter o GDB (GNU Debugger) instalado em sua máquina e usar a extensão "C/C++" do VSCode, que inclui suporte ao GDB.
+
+Por exemplo, no Ubuntu, você pode usar o seguinte comando:
+
+```bash
+sudo apt-get install gdb
+```
+
+Para instalar a extensão diretamente no VSCode ou baixá-la do marketplace:
+
+- [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
+- [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack)
+
+ O arquivo ``launch.json`` no diretório ``.vscode`` do projeto já configura a depuração no VSCode.
 
 **Não é necessário nenhuma build tool (make, cmake, etc.).**
 
