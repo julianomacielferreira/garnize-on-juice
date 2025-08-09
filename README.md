@@ -364,6 +364,8 @@ Utilizei também minha mesa digitalizadora wacom com o software Xournal++ para r
 
 [The Linux Programming Interface by Michael Kerrisk.](https://man7.org/tlpi/)
 
+[Algoritmo Mersenne Twister](https://en.wikipedia.org/wiki/Mersenne_Twister)
+
 [Xournal++](https://xournalpp.github.io/)
 
 [Mesa Digitalizadora One By Wacom CTL472, Pequena, Cor Preto e Vermelho](https://www.mercadolivre.com.br/mesa-digitalizadora-one-by-wacom-ctl472-pequena-cor-preto-e-vermelho)
