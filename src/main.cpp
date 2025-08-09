@@ -495,6 +495,28 @@ struct Payment
 };
 
 /**
+ * @brief Estrutura que representa um resumo de estatísticas.
+ *
+ * Contém informações sobre o total de requisições e o valor total.
+ */
+struct Summary
+{
+    int totalRequests;
+    double totalAmount;
+};
+
+/**
+ * @brief Estrutura que representa um resumo de pagamentos.
+ *
+ * Contém estatísticas para o default e o fallback.
+ */
+struct PaymentsSummary
+{
+    Summary defaultStats;
+    Summary fallbackStats;
+};
+
+/**
  * @brief Classe responsável por lidar com pagamentos.
  *
  * Essa classe fornece métodos estáticos para lidar com requisições de pagamento, incluindo
