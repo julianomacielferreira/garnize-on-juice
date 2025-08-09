@@ -809,13 +809,25 @@ public:
         }
         else if (method == "POST" && path.find(Constants::PURGE_PAYMENTS_ENDPOINT) == 0)
         {
+
             LOGGER::info("POST request para /purge-payments");
-            LOGGER::info("Todas as tabelas do banco serão limpas! Eu espero que você saiba o que está fazendo.");
+
+            string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
+
+            LOGGER::info(msg);
 
             /**
              * @todo Criar uma classe que limpa o banco de dados sqlite
              * Deve lidar com a concorrência para evitar inconsistências de leitura / escrita simultâneas
              */
+            map<string, string> response = {
+                {"status", Constants::OK_RESPONSE},
+                {"response", "{ \"message\": \"" + msg + "\", \"success\": true}"}};
+
+            string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+            send(socket, headers.c_str(), headers.size(), 0);
+
+            send(socket, response.at("response").c_str(), response.at("response").size(), 0);
         }
         else
         {
