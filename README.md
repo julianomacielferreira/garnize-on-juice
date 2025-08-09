@@ -339,7 +339,7 @@ Isso é uma regra do padrão C++ para evitar problemas de múltiplas definiçõe
 
 ### Ferramentas
 
-Utilizei uma mesa digitalizadora wacom.
+Utilizei também minha mesa digitalizadora wacom com o software Xournal++ para rascunhar e elaborar melhor as soluções.
 
 ![Wacom](static/mesa-digitalizadora-wacom.jpg)
 
@@ -364,6 +364,8 @@ Utilizei uma mesa digitalizadora wacom.
 [Build Your Own Redis with C/C++](https://build-your-own.org/redis/)
 
 [The Linux Programming Interface by Michael Kerrisk.](https://man7.org/tlpi/)
+
+[Xournal++](https://xournalpp.github.io/)
 
 [Mesa Digitalizadora One By Wacom CTL472, Pequena, Cor Preto e Vermelho](https://www.mercadolivre.com.br/mesa-digitalizadora-one-by-wacom-ctl472-pequena-cor-preto-e-vermelho)
 
