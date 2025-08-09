@@ -58,7 +58,7 @@ Pré-requisitos
 Passo a Passo
 
 1. Abra o terminal: Abra o terminal e navegue até a raiz do projeto.
-2. Verifique se o Docker está funcionando: Execute o comando docker --version para verificar se o Docker está instalado e funcionando corretamente.
+2. Verifique se o Docker está funcionando: Execute o comando ``docker --version`` para verificar se o Docker está instalado e funcionando corretamente.
 
 ```bash
 $ docker --version
@@ -67,7 +67,7 @@ $ docker --version
 Docker version 28.1.1, build 4eba377
 ```
 
-3. Verifique se o Docker Compose está funcionando: Execute o comando docker-compose --version para verificar se o Docker Compose está instalado e funcionando corretamente.
+3. Verifique se o Docker Compose está funcionando: Execute o comando ``docker-compose --version`` para verificar se o Docker Compose está instalado e funcionando corretamente.
 
 ```bash
 $ docker-compose --version
@@ -76,7 +76,7 @@ $ docker-compose --version
 docker-compose version 1.29.2, build 5becea4c
 ```
 
-4. Construa as imagens: Execute o comando docker-compose build para construir as imagens Docker definidas no arquivo docker-compose.yml.
+4. Construa as imagens: Execute o comando ``docker-compose build`` para construir as imagens Docker definidas no arquivo ``docker-compose.yml``.
 
 ```bash
 $ docker-compose build
@@ -106,7 +106,7 @@ docker:default
 
 ```
 
-5. Inicie os contêineres: Execute o comando docker-compose up para iniciar os contêineres Docker definidos no arquivo docker-compose.yml.
+5. Inicie os contêineres: Execute o comando ``docker-compose up`` para iniciar os contêineres Docker definidos no arquivo ``docker-compose.yml``.
 
 ```bash
 $ docker-compose up
