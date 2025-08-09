@@ -2,9 +2,9 @@
 
 Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025).
 
-Veja a seção **``Detalhes Técnicos e Possíveis Melhorias``** (mais abaixo neste README) para entender melhor a solução e também suas possíveis melhorias.
+Veja a seção **``Detalhes Técnicos e Possíveis Melhorias``** (mais abaixo) para entender melhor a solução e também suas possíveis melhorias.
 
-Veja a seção **``Desafios``** (mais abaixo neste README) para entender onde o caldo engrossou durante o desenvolvimento.
+Veja a seção **``Desafios``** (mais abaixo) para entender onde o caldo engrossou durante o desenvolvimento.
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
