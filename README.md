@@ -61,7 +61,9 @@ O objetivo é processar o máximo de pagamentos possível.
 
 ### Desafios
 
-- Escrever a lógica do servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema, como tratar requisições simultâneas e quais as abordagens possíveis.
+Durante a resolução, encontrei vários desafios interessantes que merecem destaque:
+
+- Escrever a lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas e quais as abordagens possíveis.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
 
