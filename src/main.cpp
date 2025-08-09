@@ -483,6 +483,18 @@ private:
 // Inicialização do mapa estático
 map<string, Payment> PaymentProcessor::payments;
 
+/**
+ * @brief Ponto de entrada do programa.
+ *
+ * Esse método é responsável por iniciar o servidor e lidar com requisições HTTP.
+ * Ele cria um socket, bind ao endereço e porta especificados, e escuta conexões.
+ * Quando uma conexão é estabelecida, ele lê a requisição, parseia o método e o caminho,
+ * e chama o método correspondente para lidar com a requisição.
+ *
+ * O servidor suporta requisições POST para /payments e GET para /payments-summary.
+ *
+ * @return Código de saída do programa. EXIT_SUCCESS se o programa executar com sucesso, EXIT_FAILURE caso contrário.
+ */
 int main()
 {
     int server_fd, new_socket;
