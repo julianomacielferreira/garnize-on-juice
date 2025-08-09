@@ -74,7 +74,14 @@ public:
     /**
      * @brief Resposta HTTP padrão para requisições bem-sucedidas (200 OK).
      */
-    inline static const string OK_RESPONSE = "HTTP/1.1 200 OK\r\n\r\n";
+    inline static const string OK_RESPONSE = "HTTP/1.1 200 OK";
+
+    /**
+     * @brief Cabeçalho Content-Type para respostas JSON.
+     *
+     * Inclui o tipo de conteúdo e o campo para especificar o tamanho do corpo da resposta.
+     */
+    inline static const string CONTENT_TYPE_APPLICATION_JSON = "\r\nContent-Type: application/json\r\nContent-Length: ";
 
     /**
      * @brief Mensagem de erro para requisição inválida.
@@ -517,6 +524,40 @@ struct PaymentsSummary
 };
 
 /**
+ * @brief Classe responsável por converter PaymentSummary para string JSON.
+ *
+ * Fornece um método estático para converter um PaymentSummary em uma string JSON.
+ */
+class PaymentsSummaryConverter
+{
+public:
+    /**
+     * @brief Converte um PaymentSummary para uma string JSON.
+     *
+     * @param summary O PaymentSummary a ser convertido.
+     * @return std::string A string JSON representando o PaymentsSummary.
+     */
+    static string toJson(const PaymentsSummary &summary)
+    {
+        stringstream stringBuffer;
+
+        stringBuffer << std::fixed << std::setprecision(2);
+
+        stringBuffer << "{\"default\":{\"totalRequests\":"
+                     << summary.defaultStats.totalRequests
+                     << ",\"totalAmount\":"
+                     << summary.defaultStats.totalAmount
+                     << "},\"fallback\":{\"totalRequests\":"
+                     << summary.fallbackStats.totalRequests
+                     << ",\"totalAmount\":"
+                     << summary.fallbackStats.totalAmount
+                     << "}}";
+
+        return stringBuffer.str();
+    }
+};
+
+/**
  * @brief Classe responsável por lidar com pagamentos.
  *
  * Essa classe fornece métodos estáticos para lidar com requisições de pagamento, incluindo
@@ -563,6 +604,8 @@ public:
 
         // Cria o payload e chama o default processor ou o fallback
         Payment payment;
+        // Descomentar linha abaixo pois o valor vai ser enviado na request
+        // payment.correlationId = correlationId
         payment.correlationId = UUIDGenerator::createUUID();
         payment.amount = amount;
         payment.requestedAt = TimeUtils::getTimestampUTC();
@@ -579,8 +622,6 @@ public:
          * 7) @todo Lembrar: endpoint paymemts summary (GET) precisa retornar um resumo do que já foi processado em termos de pagamentos.
          */
 
-        payments[correlationId] = payment;
-
         // Aqui adicionar uma chamada a rinha
         return Constants::CREATED_RESPONSE;
     }
@@ -592,18 +633,23 @@ public:
      * no período especificado e retorna a resposta.
      *
      * @param query Query string da requisição.
-     * @return Resposta HTTP.
+     * @return Um mapa contendo o código e a resposta.
      */
-    static string paymentSummary(const string &query)
+    static map<string, string> paymentSummary(const string &query)
     {
         Timer timer;
+
+        map<string, string> responseMap;
 
         // Parse da query string
         size_t pos = query.find("from=");
 
         if (pos == string::npos)
         {
-            return Constants::BAD_REQUEST_RESPONSE;
+            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing from\" }";
+
+            return responseMap;
         }
 
         string from = query.substr(pos + 5);
@@ -612,42 +658,32 @@ public:
 
         if (pos == string::npos)
         {
-            return Constants::BAD_REQUEST_RESPONSE;
+
+            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing to\" }";
+
+            return responseMap;
         }
 
         string to = query.substr(pos + 3);
 
-        // Calcula o total de pagamentos no período
-        double total = 0;
-
-        for (const auto &payment : payments)
-        {
-            if (payment.second.requestedAt >= from && payment.second.requestedAt <= to)
-            {
-                total += payment.second.amount;
-            }
-        }
-
-        // Aqui adicionar uma chamada a rinha
+        // Calcula o total de pagamentos no período com a o banco de dados
+        /**
+         * @todo Definir a query (usar parâmetros da query string)
+         */
+        PaymentsSummary paymentSummary;
+        paymentSummary.defaultStats.totalRequests = 43236;
+        paymentSummary.defaultStats.totalAmount = 415542345.98;
+        paymentSummary.fallbackStats.totalRequests = 423545;
+        paymentSummary.fallbackStats.totalAmount = 329347.34;
 
         // Retorna o total de pagamentos
-        return Constants::OK_RESPONSE + "Total: " + to_string(total);
+        responseMap["status"] = Constants::OK_RESPONSE;
+        responseMap["response"] = PaymentsSummaryConverter::toJson(paymentSummary);
+
+        return responseMap;
     }
-
-private:
-    /**
-     * @brief Mapa para armazenar pagamentos realizados.
-     *
-     * Esse mapa armazena os pagamentos realizados, indexados pelo ID de correlação (correlationId).
-     *
-     * @key string: ID de correlação do pagamento.
-     * @value Payment: Objeto que representa o pagamento.
-     */
-    static map<string, Payment> payments;
 };
-
-// Inicialização do mapa estático
-map<string, Payment> PaymentProcessor::payments;
 
 /**
  * @brief Classe responsável por lidar com requisições recebidas em um socket.
@@ -743,8 +779,12 @@ public:
             if (queryPos != string::npos)
             {
                 string query = path.substr(queryPos + 1);
-                string response = PaymentProcessor::paymentSummary(query);
-                send(socket, response.c_str(), response.size(), 0);
+                map<string, string> response = PaymentProcessor::paymentSummary(query);
+
+                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+                send(socket, headers.c_str(), headers.size(), 0);
+
+                send(socket, response.at("response").c_str(), response.at("response").size(), 0);
             }
             else
             {
