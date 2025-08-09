@@ -59,7 +59,7 @@ public:
     /**
      * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
      */
-    inline static const string BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n";
+    inline static const string BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request";
 
     /**
      * @brief Resposta HTTP padrão para recursos não encontrados (404 Not Found).
@@ -69,7 +69,7 @@ public:
     /**
      * @brief Resposta HTTP padrão para recursos criados com sucesso (201 Created).
      */
-    inline static const string CREATED_RESPONSE = "HTTP/1.1 201 Created\r\n\r\n";
+    inline static const string CREATED_RESPONSE = "HTTP/1.1 201 Created";
 
     /**
      * @brief Resposta HTTP padrão para requisições bem-sucedidas (200 OK).
@@ -575,16 +575,21 @@ public:
      * @param body Corpo da requisição.
      * @return Resposta HTTP.
      */
-    static string payment(const string &body)
+    static map<string, string> payment(const string &body)
     {
         Timer timer;
+
+        map<string, string> responseMap;
 
         size_t pos = body.find(Constants::KEY_CORRELATION_ID);
 
         if (pos == string::npos)
         {
-            // Retornar um json de request invalida (faltou parametro 'correlationId')
-            return Constants::BAD_REQUEST_RESPONSE;
+            // Retorna um json de request invalida (faltou parametro 'correlationId')
+            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing 'correlationId'\" }";
+
+            return responseMap;
         }
 
         pos = body.find(Constants::KEY_AMOUNT);
@@ -592,7 +597,10 @@ public:
         if (pos == string::npos)
         {
             // Retornar um json de request invalida (faltou parametro 'amount')
-            return Constants::BAD_REQUEST_RESPONSE;
+            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing 'amount'\" }";
+
+            return responseMap;
         }
 
         // Parse do corpo da requisição
@@ -623,7 +631,10 @@ public:
          */
 
         // Aqui adicionar uma chamada a rinha
-        return Constants::CREATED_RESPONSE;
+        responseMap["status"] = Constants::CREATED_RESPONSE;
+        responseMap["response"] = "{ \"message\":\"payment processed successfull\" }";
+
+        return responseMap;
     }
 
     /**
@@ -647,7 +658,7 @@ public:
         if (pos == string::npos)
         {
             responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
-            responseMap["response"] = "{ \"message\":\"Invalid params. Missing from\" }";
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing 'from'\" }";
 
             return responseMap;
         }
@@ -660,7 +671,7 @@ public:
         {
 
             responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
-            responseMap["response"] = "{ \"message\":\"Invalid params. Missing to\" }";
+            responseMap["response"] = "{ \"message\":\"Invalid params. Missing 'to'\" }";
 
             return responseMap;
         }
@@ -760,8 +771,12 @@ public:
             if (bodyPos != string::npos)
             {
                 string body = request.substr(bodyPos + 4);
-                string response = PaymentProcessor::payment(body);
-                send(socket, response.c_str(), response.size(), 0);
+                map<string, string> response = PaymentProcessor::payment(body);
+
+                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+                send(socket, headers.c_str(), headers.size(), 0);
+
+                send(socket, response.at("response").c_str(), response.at("response").size(), 0);
             }
             else
             {
