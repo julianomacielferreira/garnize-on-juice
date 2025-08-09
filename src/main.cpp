@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <sqlite3.h>
 
 using namespace std;
 
@@ -55,6 +56,11 @@ public:
      * O valor é de 1024 bytes.
      */
     static const uint16_t BUFFER_SIZE = 1024;
+
+    /**
+     * @brief Nome do arquivo de banco de dados SQLite utilizado pela aplicação.
+     */
+    inline static const char *DATABASE_NAME = "garnize.db";
 
     /**
      * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
@@ -481,6 +487,84 @@ public:
 };
 
 /**
+ * @brief Classe responsável por gerenciar a interação o banco de dados SQLite.
+ */
+class SQLiteDatabaseUtils
+{
+public:
+    /**
+     * @brief Abre uma conexão com o banco de dados SQLite local definido em Constants::DATABASE_NAME.
+     *
+     * Configura o SQLite para funcionar em modo multi-thread e retorna um ponteiro para o objeto sqlite3.
+     *
+     * @return sqlite3* Ponteiro para o objeto sqlite3 se a conexão for aberta com sucesso, ou nullptr caso contrário.
+     */
+    static sqlite3 *openConnection()
+    {
+
+        // Configura o SQLite para funcionar em modo multi-thread
+        int response = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
+
+        if (response != SQLITE_OK)
+        {
+
+            LOGGER::error(string("Erro ao configurar o modo multi-thread: ") + string(sqlite3_errstr(response)));
+
+            return nullptr;
+        }
+
+        sqlite3 *DB;
+
+        response = sqlite3_open(Constants::DATABASE_NAME, &DB);
+
+        if (response)
+        {
+            LOGGER::error(string("Erro ao abrir o banco de dados: ") + string(sqlite3_errmsg(DB)));
+
+            sqlite3_close(DB);
+
+            return nullptr;
+        }
+
+        return DB;
+    }
+
+    /**
+     * @brief Cria a tabela service_health_check no banco de dados se ela não existir.
+     *
+     * @param db Ponteiro para o objeto sqlite3.
+     * @return bool True se a tabela foi criada com sucesso, false caso contrário.
+     */
+    static bool createHealthCkeckTable(sqlite3 *db)
+    {
+        const char *SQL_QUERY = R"(
+        CREATE TABLE IF NOT EXISTS service_health_check (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            service TEXT CHECK(service IN ('default', 'fallback')) NOT NULL,
+            failing INTEGER NOT NULL,
+            minResponseTime INTEGER NOT NULL,
+            lastCheck DATETIME NOT NULL
+        );
+    )";
+
+        char *error;
+
+        int response = sqlite3_exec(db, SQL_QUERY, nullptr, nullptr, &error);
+
+        if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao criar tabela: ") + string(error));
+
+            sqlite3_free(error);
+
+            return false;
+        }
+
+        return true;
+    }
+};
+
+/**
  * @brief Estrutura que representa um pagamento.
  */
 struct Payment
@@ -635,6 +719,9 @@ public:
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
         LOGGER::info("Payment(correlationId=" + payment.correlationId + ", amount=" + std::to_string(payment.amount) + ", requestedAt=" + payment.requestedAt + ")");
+
+        // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
+        // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
 
         /**
          * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
@@ -927,7 +1014,19 @@ int main()
         return EXIT_FAILURE;
     }
 
-    LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET");
+    LOGGER::info("Inicializando serviço de Health Check");
+    sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+    if (database == nullptr)
+    {
+        LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+        return EXIT_FAILURE;
+    }
+
+    bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
+    LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
+
+    LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
     while (true)
     {
