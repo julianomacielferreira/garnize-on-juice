@@ -17,7 +17,7 @@ COPY . /app
 # -lsqlite3: Este parâmetro diz ao compilador para incluir a biblioteca sqlite3
 # -O2: Este parâmetro controla o nível de otimização do compilador.
 #      O -O2 é um nível de otimização moderado que equilibra a velocidade de execução do programa com o tempo de compilação.
-RUN g++ -std=c++17 -Wall -Wextra -lsqlite3 -O2 -o garnize_on_juice src/main.cpp
+RUN g++ src/main.cpp -std=c++17 -Wall -Wextra -O2 -o garnize_on_juice -lsqlite3
 
 # Exposição da porta
 EXPOSE 9999
