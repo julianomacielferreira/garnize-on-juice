@@ -59,20 +59,6 @@ Desenvolver uma API que intermedia pagamentos para dois serviços de processamen
 
 O objetivo é processar o máximo de pagamentos possível.
 
-### Diagramas
-
-Primeiro cenário desenvolvido:
-
-- Requests para o processador de pagamentos padrão.
-
-![Basic Diagram](static/basic-diagram.png)
-
-Para criá-los utilizei uma mesa digitalizadora wacom.
-
-![Wacom](static/mesa-digitalizadora-wacom.jpg)
-
-@TODO
-
 ### Desafios
 
 - Escrever a lógica do servidor utilizando sockets (tive que ler várias vezes o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para tratar requisições simultâneas.
@@ -171,6 +157,20 @@ A declaração da variável estática dentro da classe é como uma promessa ao c
 Se você não definir a variável estática fora da classe, o compilador saberá que a variável existe, mas o linker não encontrará a definição da variável e irá gerar um erro de "undefined reference".
 
 Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
+
+### Diagramas
+
+Primeiro cenário desenvolvido:
+
+- Requests para o processador de pagamentos padrão.
+
+![Basic Diagram](static/basic-diagram.png)
+
+Para criá-los utilizei uma mesa digitalizadora wacom.
+
+![Wacom](static/mesa-digitalizadora-wacom.jpg)
+
+@TODO
 
 ## Referências
 
