@@ -19,6 +19,11 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ```
 
+### Endpoints
+
+@TODO
+
+
 ### Estrutura do Projeto
 
 ```
