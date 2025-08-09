@@ -102,10 +102,12 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 ├── README.md
 ├── src
 │   └── main.cpp
-└── static
-    ├── basic-diagram.png
-    ├── garnize-on-juice.png
-    └── mesa-digitalizadora-wacom.jpg
+├── static
+│   ├── garnize-on-juice.png
+│   └── mesa-digitalizadora-wacom.jpg
+├── test-purge-databse.sh
+└── test-requests.sh
+
 ```
 
 ### Como compilar e depurar (com gdb)
