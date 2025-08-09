@@ -4,6 +4,8 @@ Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://git
 
 Veja a seção `Detalhes Técnicos e Possíveis Melhorias` (mais abaixo neste README) para entender melhor a solução e também suas possíveis melhorias.
 
+Veja a seção `Desafios` (mais abaixo neste README) para entender onde o caldo engrossou durante o desenvolvimento.
+
 ![Garnize On Juice](static/garnize-on-juice.png)
 
 ### O que é a Rinha do Backend
@@ -68,6 +70,14 @@ Primeiro cenário desenvolvido:
 Para criá-los utilizei uma mesa digitalizadora wacom.
 
 ![Wacom](static/mesa-digitalizadora-wacom.jpg)
+
+@TODO
+
+### Desafios
+
+- Escrever a lógica do servidor utilizando sockets (tive que ler várias vezes o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para tratar requisições simultâneas.
+- Parsear o JSON sem usar nenhuma biblioteca (Ex.: ``nlohmann/json``).
+- Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
 
 @TODO
 
