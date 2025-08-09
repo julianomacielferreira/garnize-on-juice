@@ -118,7 +118,11 @@ Creating garnize-on-juice_garnize-on-juice_1 ... done
 Attaching to garnize-on-juice_garnize-on-juice_1
 garnize-on-juice_1  | Info: Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET
 ```
+Observações
 
+- Se você quiser rodar os contêineres em segundo plano, pode usar o comando ``docker-compose up -d``.
+- Se você quiser parar os contêineres, pode usar o comando ``docker-compose stop``.
+- Se você quiser remover os contêineres, pode usar o comando ``docker-compose down``.
 
 ### Objetivo
 
