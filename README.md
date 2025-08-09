@@ -24,7 +24,7 @@ conhecimento! Esta é a terceira edição do desafio.
 - **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
 
 ```bash
-$ curl --location --request PUT 'http://localhost:9999/payments' \
+$ curl --location --request POST 'http://localhost:9999/payments' \
 --header 'Content-Type: application/json' \
 --data '{
         "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
@@ -69,10 +69,10 @@ $ curl --location --request GET 'http://localhost:9999/payments-summary?from=202
 
 ---
 
-- **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
+- **`POST` /purge-payments** (Endpoint para resetar o banco.)
 
 ```bash
-$ curl --location --request PUT 'http://localhost:9999/payments' \
+$ curl --location --request POST 'http://localhost:9999/purge-payments' \
 --header 'Content-Type: application/json' \
 --data '{
         "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
@@ -85,13 +85,10 @@ $ curl --location --request PUT 'http://localhost:9999/payments' \
 
 ```json
 {
-    "message": "payment processed successfully"
+    "message": "database purged"
 }
 ```
 </details>
-
-
-@TODO
 
 
 ### Estrutura do Projeto
