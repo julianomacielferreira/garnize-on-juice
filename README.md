@@ -1,8 +1,10 @@
 ## Garnize on Juice $${\color{red}[in \space progress]}$$
 
-Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como um gateway para serviços de pagamento.
+Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
 
-Para entender melhor a arquitetura e as decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará insights sobre os obstáculos enfrentados durante o desenvolvimento 
+O objetivo é processar o máximo de pagamentos possível.
+
+Para entender melhor as soluções e decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará insights sobre os obstáculos enfrentados durante o desenvolvimento 
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
@@ -123,12 +125,6 @@ Observações
 - Se você quiser rodar os contêineres em segundo plano, pode usar o comando ``docker-compose up -d``.
 - Se você quiser parar os contêineres, pode usar o comando ``docker-compose stop``.
 - Se você quiser remover os contêineres, pode usar o comando ``docker-compose down``.
-
-### Objetivo
-
-Desenvolver uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
-
-O objetivo é processar o máximo de pagamentos possível.
 
 ### Desafios
 
