@@ -47,15 +47,15 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 ./compile.sh --debug # Compila para depuração
 ```
 
-Para depurar o código, é necessário ter o GDB (GNU Debugger) instalado em sua máquina e usar a extensão "C/C++" do VSCode, que inclui suporte ao GDB.
+Para depurar o código, é necessário ter o ``GDB (GNU Debugger)`` instalado em sua máquina e usar a extensão ``"C/C++"`` do VSCode, que inclui suporte ao GDB.
 
-Por exemplo, no Ubuntu, você pode usar o seguinte comando:
+Por exemplo, no Ubuntu, você pode usar o seguinte comando para instalar o ``GDB (GNU Debugger)``:
 
 ```bash
 sudo apt-get install gdb
 ```
 
-Para instalar a extensão diretamente no VSCode ou baixá-la do marketplace:
+É possível instalar a extensão ``"C/C++"`` diretamente no VSCode ou baixá-la do marketplace:
 
 - [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
 - [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack)
