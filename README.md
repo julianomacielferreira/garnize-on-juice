@@ -1,6 +1,6 @@
 ## Garnize on Juice $${\color{red}[in \space progress]}$$
 
-Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
+Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
 
 O objetivo é processar o máximo de pagamentos possível.
 
@@ -20,6 +20,76 @@ conhecimento! Esta é a terceira edição do desafio.
 ```
 
 ### Endpoints
+
+- **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
+
+```bash
+$ curl --location --request PUT 'http://localhost:9999/payments' \
+--header 'Content-Type: application/json' \
+--data '{
+        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
+        "amount": 19.90
+    }'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+    "message": "payment processed successfully"
+}
+```
+</details>
+
+---
+
+- **`GET` /payments-summary?from={{ISO em UTC}}&to={{ISO em UTC}}** (Exibe detalhes das requisições de processamento de pagamentos.)
+
+```bash
+$ curl --location --request GET 'http://localhost:9999/payments-summary?from=2025-08-09T00%3A15%3A08.174Z&to=2025-08-09T00%3A15%3A08.174Z'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+    "default" : {
+        "totalRequests": 43236,
+        "totalAmount": 415542345.98
+    },
+    "fallback" : {
+        "totalRequests": 423545,
+        "totalAmount": 329347.34
+    }
+}
+```
+</details>
+
+---
+
+- **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
+
+```bash
+$ curl --location --request PUT 'http://localhost:9999/payments' \
+--header 'Content-Type: application/json' \
+--data '{
+        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
+        "amount": 19.90
+    }'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+    "message": "payment processed successfully"
+}
+```
+</details>
+
 
 @TODO
 
@@ -267,15 +337,9 @@ Se você não definir a variável estática fora da classe, o compilador saberá
 
 Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
 
-### Diagramas
+### Ferramentas
 
-Primeiro cenário desenvolvido:
-
-- Requests para o processador de pagamentos padrão.
-
-![Basic Diagram](static/basic-diagram.png)
-
-Para criá-los utilizei uma mesa digitalizadora wacom.
+Utilizei uma mesa digitalizadora wacom.
 
 ![Wacom](static/mesa-digitalizadora-wacom.jpg)
 
