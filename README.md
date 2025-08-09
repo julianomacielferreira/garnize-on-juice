@@ -1,10 +1,8 @@
 ## Garnize on Juice $${\color{red}[in \space progress]}$$
 
-Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025).
+Projeto desenvolvido em C++ para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como um gateway para serviços de pagamento.
 
-Veja a seção **`Detalhes Técnicos e Possíveis Melhorias`** (mais abaixo) para entender melhor a solução e também suas possíveis melhorias.
-
-Veja a seção **`Desafios`** (mais abaixo) para entender onde o caldo engrossou durante o desenvolvimento.
+Para entender melhor a arquitetura e as decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará insights sobre os obstáculos enfrentados durante o desenvolvimento 
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
