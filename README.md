@@ -69,7 +69,7 @@ $ curl --location --request GET 'http://localhost:9999/payments-summary?from=202
 
 ---
 
-- **`POST` /purge-payments** (Endpoint para resetar o banco.)
+- **`POST` /purge-payments** (Endpoint para limpar o banco SQLite.)
 
 ```bash
 $ curl --location --request POST 'http://localhost:9999/purge-payments' \
