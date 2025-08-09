@@ -71,6 +71,9 @@ O objetivo é processar o máximo de pagamentos possível.
 
 #### Estrutura de classes criada
 
+Todas as classes e estruturas estão no arquivo ``main.cpp`` ao 'melhor' estilo javascript. Uma prática recomendada é criar os respectivos arquivos
+de cabeçalhos (headers .h) e separá-las do arquivo principal.
+
 @TODO
 
 #### Buffer de tamanho fixo para ler dados da conexão
