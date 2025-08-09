@@ -23,7 +23,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Define as flags de compilação padrão.
-COMPILER_FLAGS="-std=c++17 -Wall -Wextra -lsqlite3"
+COMPILER_FLAGS="-std=c++17 -Wall -Wextra"
 
 # Verifica se o modo de depuração está ativado.
 if [ $DEBUG -eq 1 ]; then
@@ -43,7 +43,7 @@ else
 fi
 
 # Compila o código C++ usando as flags de compilação definidas.
-g++ $COMPILER_FLAGS -o $OUTPUT_NAME src/main.cpp
+g++ src/main.cpp $COMPILER_FLAGS -o $OUTPUT_NAME -lsqlite3
 
 # Verifica se a compilação foi bem-sucedida.
 if [ $? -eq 0 ]; then
