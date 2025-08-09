@@ -137,6 +137,18 @@ Abaixo, estão listados casos que devem ser tratados em um cenário mais real.
 
 - Espaçamento dentro de strings (`"valor com espaços"`)
 
+#### Por que inicializar váriáveis estáticas declaradas dentro de uma classe, fora dela ?
+
+Isso é necessário devido à forma como as variáveis estáticas são tratadas em C++.
+
+Quando você declara uma variável estática dentro de uma classe, você está apenas declarando que a variável existe e tem um determinado tipo. No entanto, a variável em si não é criada até que seja definida fora da classe.
+
+A declaração da variável estática dentro da classe é como uma promessa ao compilador de que a variável será definida em algum lugar. A definição da variável fora da classe é onde a variável é realmente criada e alocada memória.
+
+Se você não definir a variável estática fora da classe, o compilador saberá que a variável existe, mas o linker não encontrará a definição da variável e irá gerar um erro de "undefined reference".
+
+Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
+
 ## Referências
 
 [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025)
