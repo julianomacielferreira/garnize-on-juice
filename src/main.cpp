@@ -524,11 +524,11 @@ struct PaymentsSummary
 };
 
 /**
- * @brief Classe responsável por converter PaymentSummary para string JSON.
+ * @brief Classe responsável por converter estruturas para string JSON.
  *
- * Fornece um método estático para converter um PaymentSummary em uma string JSON.
+ * Fornece um métodos estáticos para converter em uma string JSON.
  */
-class PaymentsSummaryConverter
+class PaymentsJSONConverter
 {
 public:
     /**
@@ -537,7 +537,7 @@ public:
      * @param summary O PaymentSummary a ser convertido.
      * @return std::string A string JSON representando o PaymentsSummary.
      */
-    static string toJson(const PaymentsSummary &summary)
+    static string summaryToJson(const PaymentsSummary &summary)
     {
         stringstream stringBuffer;
 
@@ -552,6 +552,22 @@ public:
                      << ",\"totalAmount\":"
                      << summary.fallbackStats.totalAmount
                      << "}}";
+
+        return stringBuffer.str();
+    }
+
+    static string toJson(const Payment &payment)
+    {
+
+        stringstream stringBuffer;
+
+        stringBuffer << "{\"correlationId\": \""
+                     << payment.correlationId
+                     << "\", \"amount\": "
+                     << std::to_string(payment.amount)
+                     << ", \"requestedAt\" : \""
+                     << payment.requestedAt
+                     << "\"}";
 
         return stringBuffer.str();
     }
@@ -632,7 +648,7 @@ public:
 
         // Aqui adicionar uma chamada a rinha
         responseMap["status"] = Constants::CREATED_RESPONSE;
-        responseMap["response"] = "{ \"message\":\"payment processed successfull\" }";
+        responseMap["response"] = "{ \"message\":\"payment processed successfull\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
 
         return responseMap;
     }
@@ -690,7 +706,7 @@ public:
 
         // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
-        responseMap["response"] = PaymentsSummaryConverter::toJson(paymentSummary);
+        responseMap["response"] = PaymentsJSONConverter::summaryToJson(paymentSummary);
 
         return responseMap;
     }
