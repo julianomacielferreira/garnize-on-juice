@@ -47,6 +47,8 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 ./compile.sh --debug # Compila para depuração
 ```
 
+**Não é necessário nenhuma build tool (make, cmake, etc.).**
+
 <sub>As instruções acima foram testadas somente em ambiente Linux.</sub>
 
 ### Rodar com Docker compose
