@@ -50,3 +50,6 @@
 # Executable
 garnize_on_juice
 garnize_on_juice_debug
+
+# Local database
+garnize.db
