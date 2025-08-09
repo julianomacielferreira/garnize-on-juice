@@ -368,7 +368,7 @@ struct Payment
     /**
      * @brief Data do pagamento.
      */
-    string date;
+    string requestedAt;
 };
 
 /**
@@ -420,7 +420,7 @@ public:
         Payment payment;
         payment.correlationId = correlationId;
         payment.amount = amount;
-        payment.date = TimeUtils::getTimestampUTC();
+        payment.requestedAt = TimeUtils::getTimestampUTC();
 
         payments[correlationId] = payment;
 
@@ -465,7 +465,7 @@ public:
 
         for (const auto &payment : payments)
         {
-            if (payment.second.date >= from && payment.second.date <= to)
+            if (payment.second.requestedAt >= from && payment.second.requestedAt <= to)
             {
                 total += payment.second.amount;
             }
