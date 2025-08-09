@@ -279,6 +279,8 @@ Para criá-los utilizei uma mesa digitalizadora wacom.
 
 [Docker](https://docs.docker.com/)
 
+[Docker Compose](https://docs.docker.com/compose/)
+
 [Build Your Own Redis with C/C++](https://build-your-own.org/redis/)
 
 [The Linux Programming Interface by Michael Kerrisk.](https://man7.org/tlpi/)
