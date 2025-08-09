@@ -98,6 +98,16 @@ Além disso, a função `read` não garante que todos os 1024 bytes sejam lidos 
 
 Ambas as abordagens permitem que o servidor processe múltiplas requisições simultaneamente e não bloqueie enquanto espera pela resposta do microserviço. No entanto, a escolha entre threads e async I/O depende do design do seu servidor e das suas necessidades específicas.
 
+Desvantagens de threads:
+
+- Pode ser mais difícil de gerenciar e sincronizar as threads.
+- Pode haver problemas de concorrência e deadlock se não forem implementados corretamente.
+
+Desvantagens de async I/O:
+
+- Pode ser mais difícil de implementar, especialmente se você não estiver familiarizado com programação assíncrona.
+- Pode ser mais difícil de depurar e testar.
+
 #### Explicação sobre a expressão regular utilizada para remover espaços em brancos desnecessários em um string JSON:
 
 ```c++
