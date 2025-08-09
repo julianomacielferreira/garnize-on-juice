@@ -112,6 +112,12 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 ### Como compilar e depurar (com gdb)
 
+Certifique-se de que você tenha a biblioteca SQLite instalada no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar a biblioteca com o seguinte comando:
+
+```bash
+$ sudo apt-get install libsqlite3-dev
+```
+
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
 
 Para usar o script, basta executá-lo com ou sem a flag `--debug`:
