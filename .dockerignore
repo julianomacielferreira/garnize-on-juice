@@ -9,6 +9,8 @@ docker-compose*
 Dockerfile*
 LICENSE
 README.md
+DATABASE_MODEL.mwb
+DATABASE_MODEL.mwb.bak
 
 # vscode
 !.vscode/launch.json

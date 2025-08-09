@@ -53,3 +53,6 @@ garnize_on_juice_debug
 
 # Local database
 garnize.db
+
+# Database Model
+DATABASE_MODEL.mwb.bak
