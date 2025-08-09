@@ -18,7 +18,7 @@ COPY . /app
 RUN g++ -std=c++17 -Wall -Wextra -O2 -o garnize_on_juice src/main.cpp
 
 # Exposição da porta
-EXPOSE 8080
+EXPOSE 9999
 
 # Execução do serviço
 CMD ["./garnize_on_juice"]
