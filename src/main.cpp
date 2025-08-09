@@ -47,6 +47,14 @@ public:
     static const uint16_t PORT = 9999;
 
     /**
+     * @brief Tamanho do buffer para leitura de dados em bytes.
+     *
+     * Essa constante define o tamanho do buffer usado para ler dados de uma conexão de rede.
+     * O valor é de 1024 bytes.
+     */
+    static const uint16_t BUFFER_SIZE = 1024;
+
+    /**
      * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
      */
     inline static const string BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request\r\n\r\n";
@@ -545,9 +553,11 @@ int main()
             continue;
         }
 
+        // O número 1024 é usado aqui como o tamanho do buffer para ler os dados da conexão de rede.
+        // Isso significa que o programa está alocando um espaço de memória de 1024 bytes para armazenar os dados que estão sendo lidos da conexão.
+        char buffer[Constants::BUFFER_SIZE];
         // Ler a requisição
-        char buffer[1024];
-        read(new_socket, buffer, 1024);
+        read(new_socket, buffer, Constants::BUFFER_SIZE);
         string request(buffer);
 
         // Parse da requisição
