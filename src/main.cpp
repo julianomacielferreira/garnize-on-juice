@@ -362,87 +362,126 @@ struct Payment
     string date;
 };
 
-// Mapa para armazenar pagamentos
-map<string, Payment> payments;
-
-// Função para lidar com requisições POST /payments
-string handlePostPayment(const string &body)
+/**
+ * @brief Classe responsável por lidar com pagamentos.
+ *
+ * Essa classe fornece métodos estáticos para lidar com requisições de pagamento, incluindo
+ * a criação de pagamentos e o cálculo do total de pagamentos em um período.
+ */
+class PaymentProcessor
 {
-    Timer timer;
-
-    size_t pos = body.find(Constants::KEY_CORRELATION_ID);
-
-    if (pos == string::npos)
+public:
+    /**
+     * @brief Lida com requisições POST /payments.
+     *
+     * Esse método verifica se a requisição é válida, parseia o corpo da requisição,
+     * cria um pagamento e o armazena no mapa de pagamentos.
+     *
+     * @param body Corpo da requisição.
+     * @return Resposta HTTP.
+     */
+    static string payment(const string &body)
     {
-        // Retornar um json de request invalida (faltou parametro 'amount')
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
+        Timer timer;
 
-    pos = body.find(Constants::KEY_AMOUNT);
+        size_t pos = body.find(Constants::KEY_CORRELATION_ID);
 
-    if (pos == string::npos)
-    {
-        // Retornar um json de request invalida (faltou parametro 'amount')
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
-
-    // Parse do corpo da requisição
-    map<string, string> json = JsonParser::parseJson(body);
-
-    string correlationId = json.at(Constants::KEY_CORRELATION_ID);
-    double amount = stod(json.at(Constants::KEY_AMOUNT));
-
-    // Armazena o pagamento
-    Payment payment;
-    payment.correlationId = correlationId;
-    payment.amount = amount;
-    payment.date = TimeUtils::getTimestampUTC();
-
-    payments[correlationId] = payment;
-
-    // Aqui adicionar uma chamada a rinha
-
-    return Constants::CREATED_RESPONSE;
-}
-
-// Função para lidar com requisições GET /payments-summary
-string handleGetPaymentSummary(const string &query)
-{
-    Timer timer;
-
-    // Parse da query string
-    size_t pos = query.find("from=");
-    if (pos == string::npos)
-    {
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
-
-    string from = query.substr(pos + 5);
-
-    pos = query.find("to=");
-    if (pos == string::npos)
-    {
-        return Constants::BAD_REQUEST_RESPONSE;
-    }
-
-    string to = query.substr(pos + 3);
-
-    // Calcula o total de pagamentos no período
-    double total = 0;
-
-    for (const auto &payment : payments)
-    {
-        if (payment.second.date >= from && payment.second.date <= to)
+        if (pos == string::npos)
         {
-            total += payment.second.amount;
+            // Retornar um json de request invalida (faltou parametro 'correlationId')
+            return Constants::BAD_REQUEST_RESPONSE;
         }
+
+        pos = body.find(Constants::KEY_AMOUNT);
+
+        if (pos == string::npos)
+        {
+            // Retornar um json de request invalida (faltou parametro 'amount')
+            return Constants::BAD_REQUEST_RESPONSE;
+        }
+
+        // Parse do corpo da requisição
+        map<string, string> json = JsonParser::parseJson(body);
+
+        string correlationId = json.at(Constants::KEY_CORRELATION_ID);
+
+        double amount = stod(json.at(Constants::KEY_AMOUNT));
+
+        // Cria o payload e chama o default processor ou o fallback
+        Payment payment;
+        payment.correlationId = correlationId;
+        payment.amount = amount;
+        payment.date = TimeUtils::getTimestampUTC();
+
+        payments[correlationId] = payment;
+
+        // Aqui adicionar uma chamada a rinha
+        return Constants::CREATED_RESPONSE;
     }
 
-    // Aqui adicionar uma chamada a rinha
+    /**
+     * @brief Lida com requisições GET /payments-summary.
+     *
+     * Esse método verifica se a query string é válida, calcula o total de pagamentos
+     * no período especificado e retorna a resposta.
+     *
+     * @param query Query string da requisição.
+     * @return Resposta HTTP.
+     */
+    static string paymentSummary(const string &query)
+    {
+        Timer timer;
 
-    // Retorna o total de pagamentos
-    return Constants::OK_RESPONSE + "Total: " + to_string(total);
-}
+        // Parse da query string
+        size_t pos = query.find("from=");
+
+        if (pos == string::npos)
+        {
+            return Constants::BAD_REQUEST_RESPONSE;
+        }
+
+        string from = query.substr(pos + 5);
+
+        pos = query.find("to=");
+
+        if (pos == string::npos)
+        {
+            return Constants::BAD_REQUEST_RESPONSE;
+        }
+
+        string to = query.substr(pos + 3);
+
+        // Calcula o total de pagamentos no período
+        double total = 0;
+
+        for (const auto &payment : payments)
+        {
+            if (payment.second.date >= from && payment.second.date <= to)
+            {
+                total += payment.second.amount;
+            }
+        }
+
+        // Aqui adicionar uma chamada a rinha
+
+        // Retorna o total de pagamentos
+        return Constants::OK_RESPONSE + "Total: " + to_string(total);
+    }
+
+private:
+    /**
+     * @brief Mapa para armazenar pagamentos realizados.
+     *
+     * Esse mapa armazena os pagamentos realizados, indexados pelo ID de correlação (correlationId).
+     *
+     * @key string: ID de correlação do pagamento.
+     * @value Payment: Objeto que representa o pagamento.
+     */
+    static map<string, Payment> payments;
+};
+
+// Inicialização do mapa estático
+map<string, Payment> PaymentProcessor::payments;
 
 int main()
 {
@@ -528,7 +567,7 @@ int main()
             if (bodyPos != string::npos)
             {
                 string body = request.substr(bodyPos + 4);
-                string response = handlePostPayment(body);
+                string response = PaymentProcessor::payment(body);
                 send(new_socket, response.c_str(), response.size(), 0);
             }
             else
@@ -547,7 +586,7 @@ int main()
             if (queryPos != string::npos)
             {
                 string query = path.substr(queryPos + 1);
-                string response = handleGetPaymentSummary(query);
+                string response = PaymentProcessor::paymentSummary(query);
                 send(new_socket, response.c_str(), response.size(), 0);
             }
             else
