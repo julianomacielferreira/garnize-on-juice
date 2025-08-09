@@ -30,6 +30,7 @@
 #include <vector>
 #include <regex>
 #include <thread>
+#include <random>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
@@ -121,6 +122,13 @@ public:
      * Essa constante define o caminho para obter um resumo de pagamentos.
      */
     inline static const string PAYMENTS_SUMMARY_ENDPOINT = "/payments-summary";
+
+    /**
+     * @brief Endpoint para limpar pagamentos.
+     *
+     * Essa constante define o caminho para limpar o banco sqlite.
+     */
+    inline static const string PURGE_PAYMENTS_ENDPOINT = "/purge-payments";
 
     /**
      * @brief Endpoint para resumo de pagamentos para administradores.
@@ -642,8 +650,20 @@ public:
                 send(socket, response.c_str(), response.size(), 0);
             }
         }
+        else if (method == "POST" && path.find(Constants::PURGE_PAYMENTS_ENDPOINT) == 0)
+        {
+            LOGGER::info("POST request para /purge-payments");
+            LOGGER::info("Todas as tabelas do banco serão limpas! Eu espero que você saiba o que está fazendo.");
+
+            /**
+             * @todo Criar uma classe que limpa o banco de dados sqlite
+             * Deve lidar com a concorrência para evitar inconsistências de leitura / escrita simultâneas
+             */
+        }
         else
         {
+            LOGGER::info("Essa request não está mapeada");
+
             string response = Constants::NOT_FOUND_RESPONSE;
             send(socket, response.c_str(), response.size(), 0);
         }
