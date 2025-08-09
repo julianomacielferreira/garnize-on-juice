@@ -99,14 +99,51 @@ public:
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
      */
-    inline static const string PROCESSOR_DEFAULT = "http://payment-processor-default:8080";
+    inline static const string PROCESSOR_DEFAULT = "http://localhost:8001";
 
     /**
      * @brief URL de fallback do processador de pagamentos.
      *
      * Essa URL é usada como fallback quando o processador de pagamentos padrão não está disponível.
      */
-    inline static const string PROCESSOR_FALLBACK = "http://payment-processor-fallback:8080";
+    inline static const string PROCESSOR_FALLBACK = "http://localhost:8002";
+
+    /**
+     * @brief Endpoint para operações de pagamento.
+     *
+     * Essa constante define o caminho base para operações de pagamento.
+     */
+    inline static const string PAYMENTS_ENDPOINT = "/payments";
+
+    /**
+     * @brief Endpoint para resumo de pagamentos.
+     *
+     * Essa constante define o caminho para obter um resumo de pagamentos.
+     */
+    inline static const string PAYMENTS_SUMMARY_ENDPOINT = "/payments-summary";
+
+    /**
+     * @brief Endpoint para resumo de pagamentos para administradores.
+     *
+     * Essa constante define o caminho para obter um resumo de pagamentos com acesso de administrador.
+     */
+    inline static const string PAYMENTS_SUMMARY_ADMIN_ENDPOINT = "/admin/payments-summary";
+
+    /**
+     * @brief Caminho padrão para o health check do processo.
+     *
+     * Essa constante define o caminho padrão que é usado para verificar a saúde do processo.
+     * O valor padrão é "payments/service-health".
+     */
+    inline static const string HEALTH_CHECK_ENDPOINT = "/payments/service-health";
+
+    /**
+     * @brief Header de autenticação para a Rinha.
+     *
+     * Essa constante define o valor do header de autenticação X-Rinha-Token,
+     * que é usado para autenticar requisições na Rinha.
+     */
+    inline static const string X_RINHA_TOKEN = "X-Rinha-Token: 123";
 };
 
 /**
@@ -422,6 +459,16 @@ public:
         payment.amount = amount;
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
+        /**
+         * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
+         * 2) @todo Este endpoint impõe um limite de chamadas – 1 chamada a cada 5 segundos
+         * 3) @todo Salvar o resultado em alguma estrutura de dados que possa ser compartilhada pelas threads
+         * 4) @todo Se este limite for ultrapassado, você receberá uma resposta de erro do tipo HTTP 429 - Too Many Requests.
+         * 5) @todo decidir como o algoritmo vai fazer as requests para o default ou o fallback
+         * 6) @todo Salvar os pagamentos que deram certo para retornar pelo paymemts summary (GET)
+         * 7) @todo Lembrar: endpoint paymemts summary (GET) precisa retornar um resumo do que já foi processado em termos de pagamentos.
+         */
+
         payments[correlationId] = payment;
 
         // Aqui adicionar uma chamada a rinha
@@ -524,12 +571,16 @@ public:
     static void handle(int socket)
     {
 
-        // O número 1024 é usado aqui como o tamanho do buffer para ler os dados da conexão de rede.
-        // Isso significa que o programa está alocando um espaço de memória de 1024 bytes para armazenar os dados que estão sendo lidos da conexão.
+        // Define o tamanho do buffer para ler dados da conexão de rede.
+        // O buffer tem um tamanho fixo de 1024 bytes (definido em Constants::BUFFER_SIZE),
+        // o que significa que o programa pode ler até 1024 bytes de dados da conexão por vez.
         char buffer[Constants::BUFFER_SIZE];
 
         // Ler a requisição
-        read(socket, buffer, Constants::BUFFER_SIZE);
+        if (read(socket, buffer, Constants::BUFFER_SIZE) < 0)
+        {
+            LOGGER::error("Falha ao ler a requisição");
+        }
 
         string request(buffer);
 
@@ -554,7 +605,7 @@ public:
 
         string path = HttpRequestParser::extractMethod(request);
 
-        if (method == "POST" && path == "/payments")
+        if (method == "POST" && path == Constants::PAYMENTS_ENDPOINT)
         {
             LOGGER::info("POST request para /payments");
 
@@ -572,7 +623,7 @@ public:
                 send(socket, response.c_str(), response.size(), 0);
             }
         }
-        else if (method == "GET" && path.find("/payments-summary") == 0)
+        else if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
         {
 
             LOGGER::info("GET request para /payments-summary");
@@ -639,7 +690,9 @@ int main()
         return EXIT_FAILURE;
     }
 
-    // A opção SO_REUSEADDR permite que você reutilize a mesma porta mesmo se o socket estiver em um estado de espera.
+    // Habilita a opção SO_REUSEADDR para permitir a reutilização da mesma porta,
+    // mesmo se o socket estiver em um estado de espera (TIME_WAIT).
+    // Isso evita erros de "endereço em uso" ao reiniciar o servidor.
     int ALLOW_REBIND_SAME_PORT = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &ALLOW_REBIND_SAME_PORT, sizeof(ALLOW_REBIND_SAME_PORT)) < 0)
     {
@@ -649,6 +702,10 @@ int main()
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
+
+    // Converte a porta de host para ordem de bytes de rede (Big-endian) usando htons.
+    // Isso garante que a porta seja representada corretamente em diferentes arquiteturas,
+    // independentemente da ordem de bytes do sistema.
     address.sin_port = htons(Constants::PORT);
 
     // Bind do socket ao endereço
