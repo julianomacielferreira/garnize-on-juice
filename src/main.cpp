@@ -183,7 +183,7 @@ public:
      */
     static void error(const std::string &message)
     {
-        std::cerr << "Erro: " << message << std::endl;
+        cerr << "Erro: " << message << endl;
     }
 
     /**
@@ -193,7 +193,7 @@ public:
      */
     static void info(const std::string &message)
     {
-        std::cout << "Info: " << message << std::endl;
+        cout << "Info: " << message << endl;
     }
 };
 
@@ -805,11 +805,14 @@ public:
     static HealthCheck getLastHealthCheck(sqlite3 *database, const string &service)
     {
         const char *sql = R"(
-        SELECT service, failing, minResponseTime, lastCheck
-        FROM service_health_check
-        WHERE service = ?
-        ORDER BY lastCheck DESC
-        LIMIT 1;
+            SELECT service, 
+                   failing, 
+                   minResponseTime, 
+                   lastCheck 
+              FROM service_health_check 
+             WHERE service = ? 
+          ORDER BY lastCheck DESC 
+             LIMIT 1;
         )";
 
         sqlite3_stmt *statement;
@@ -1621,6 +1624,7 @@ int main()
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckServiceThread::init();
 
+    cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
     while (true)
