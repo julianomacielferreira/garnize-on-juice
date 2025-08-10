@@ -545,7 +545,7 @@ public:
 
         if (response)
         {
-            LOGGER::error(string("Erro ao abrir o banco de dados: ") + string(sqlite3_errmsg(DB)));
+            LOGGER::error(string("Erro ao abrir conexão com o banco de dados: ") + string(sqlite3_errmsg(DB)));
 
             sqlite3_close(DB);
 
@@ -553,6 +553,30 @@ public:
         }
 
         return DB;
+    }
+
+    /**
+     * @brief Fecha uma conexão com o banco de dados SQLite local definido em Constants::DATABASE_NAME.
+     *
+     * @param db Ponteiro para o objeto sqlite3.
+     * @return bool True a conexão foi fechada com sucesso, false caso contrário.
+     */
+    static bool closeConnection(sqlite3 *db)
+    {
+
+        int response = sqlite3_close(db);
+
+        if (response != SQLITE_OK)
+        {
+
+            LOGGER::error(string("Erro ao fechar conexão com o banco de dados: ") + string(sqlite3_errmsg(db)));
+
+            return false;
+        }
+
+        LOGGER::info("Fechou conexão com o banco de dados.");
+
+        return true;
     }
 
     /**
@@ -1180,7 +1204,7 @@ int main()
     }
     LOGGER::info(string("HealthCkeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
 
-     // Verifica se o registro único para o health check "fallback" esta criado
+    // Verifica se o registro único para o health check "fallback" esta criado
     HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
 
     if (healthCheckFallBack.service.size() == 0)
@@ -1195,7 +1219,7 @@ int main()
     LOGGER::info(string("HealthCkeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
 
     // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-    sqlite3_close(database);
+    SQLiteDatabaseUtils::closeConnection(database);
     //--
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
