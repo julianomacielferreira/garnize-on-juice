@@ -53,9 +53,9 @@ public:
      * @brief Tamanho do buffer para leitura de dados em bytes.
      *
      * Essa constante define o tamanho do buffer usado para ler dados de uma conexão de rede.
-     * O valor é de 1024 bytes.
+     * O valor é de 512 bytes.
      */
-    static const uint16_t BUFFER_SIZE = 1024;
+    static const uint16_t BUFFER_SIZE = 512;
 
     /**
      * @brief Nome do arquivo de banco de dados SQLite utilizado pela aplicação.
@@ -487,6 +487,32 @@ public:
 };
 
 /**
+ * @brief Representa um registro de HealthCheck.
+ */
+struct HealthCheck
+{
+    /**
+     * @brief Nome do serviço.
+     */
+    string service;
+
+    /**
+     * @brief Indica se o serviço está falhando (0 = não, 1 = sim).
+     */
+    int failing;
+
+    /**
+     * @brief Tempo de resposta mínimo do serviço.
+     */
+    int minResponseTime;
+
+    /**
+     * @brief Data e hora da última verificação do serviço.
+     */
+    string lastCheck;
+};
+
+/**
  * @brief Classe responsável por gerenciar a interação o banco de dados SQLite.
  */
 class SQLiteDatabaseUtils
@@ -561,6 +587,114 @@ public:
         }
 
         return true;
+    }
+
+    /**
+     * @brief Insere um registro na tabela service_health_check.
+     *
+     * @param database Ponteiro para o objeto sqlite3.
+     * @param healthCheck Registro de HealthCheck a ser inserido.
+     * @return bool True se o registro foi inserido com sucesso, false caso contrário.
+     */
+    static bool createHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
+    {
+        const char *SQL_QUERY = R"(
+        INSERT INTO service_health_check (service, failing, minResponseTime, lastCheck)
+        VALUES (?, ?, ?, ?);
+    )";
+
+        sqlite3_stmt *statement;
+
+        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
+
+        if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
+
+            return false;
+        }
+
+        sqlite3_bind_text(statement, 1, healthCheck.service.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_int(statement, 2, healthCheck.failing);
+        sqlite3_bind_int(statement, 3, healthCheck.minResponseTime);
+        sqlite3_bind_text(statement, 4, healthCheck.lastCheck.c_str(), -1, SQLITE_STATIC);
+
+        response = sqlite3_step(statement);
+
+        if (response != SQLITE_DONE)
+        {
+            LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
+
+            sqlite3_finalize(statement);
+
+            return false;
+        }
+
+        sqlite3_finalize(statement);
+
+        return true;
+    }
+
+    /**
+     * @brief Recupera o registro mais atual da tabela service_health_check.
+     *
+     * @param database Ponteiro para o objeto sqlite3.
+     * @param service String para escolher qual o serviço que deseja recuperar.
+     * @return HealthCheck contendo os valores do registro mais atual.
+     */
+    static HealthCheck getLastHealthCheck(sqlite3 *database, const string &service)
+    {
+        const char *sql = R"(
+        SELECT service, failing, minResponseTime, lastCheck
+        FROM service_health_check
+        WHERE service = ?
+        ORDER BY lastCheck DESC
+        LIMIT 1;
+    )";
+
+        sqlite3_stmt *statement;
+
+        int response = sqlite3_prepare_v2(database, sql, -1, &statement, nullptr);
+
+        HealthCheck healthCheck;
+
+        if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
+
+            return healthCheck;
+        }
+
+        sqlite3_bind_text(statement, 1, service.c_str(), -1, SQLITE_STATIC);
+
+        response = sqlite3_step(statement);
+
+        if (response == SQLITE_ROW)
+        {
+            healthCheck.service = reinterpret_cast<const char *>(sqlite3_column_text(statement, 0));
+            healthCheck.failing = sqlite3_column_int(statement, 1);
+            healthCheck.minResponseTime = sqlite3_column_int(statement, 2);
+            healthCheck.lastCheck = reinterpret_cast<const char *>(sqlite3_column_text(statement, 3));
+
+            sqlite3_finalize(statement);
+
+            return healthCheck;
+        }
+        else if (response == SQLITE_DONE)
+        {
+            // Nenhum registro encontrado
+            sqlite3_finalize(statement);
+
+            return healthCheck;
+        }
+        else
+        {
+            LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
+
+            sqlite3_finalize(statement);
+
+            return healthCheck;
+        }
     }
 };
 
@@ -832,8 +966,8 @@ public:
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
-        // O buffer tem um tamanho fixo de 1024 bytes (definido em Constants::BUFFER_SIZE),
-        // o que significa que o programa pode ler até 1024 bytes de dados da conexão por vez.
+        // O buffer tem um tamanho fixo de 512 bytes (definido em Constants::BUFFER_SIZE),
+        // o que significa que o programa pode ler até 512 bytes de dados da conexão por vez.
         char buffer[Constants::BUFFER_SIZE];
 
         // Ler a requisição
@@ -1003,7 +1137,7 @@ int main()
     // Bind do socket ao endereço
     if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
-        LOGGER::error("Falha ao bind do socket");
+        LOGGER::error("Falha ao tentar fazer o bind do socket ao IP:PORT");
         return EXIT_FAILURE;
     }
 
@@ -1014,6 +1148,10 @@ int main()
         return EXIT_FAILURE;
     }
 
+    /**
+     * @todo Serviço de health check, uma única thread que ficará
+     * rodando a cada 5 segundos batendo no endpoint e salvando o resultado
+     */
     LOGGER::info("Inicializando serviço de Health Check");
     sqlite3 *database = SQLiteDatabaseUtils::openConnection();
 
@@ -1023,8 +1161,42 @@ int main()
         return EXIT_FAILURE;
     }
 
+    // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
     bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
     LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
+
+    // Verifica se o registro único para o health check "default" esta criado
+    HealthCheck healthCheckDefault;
+    healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
+
+    if (healthCheckDefault.service.size() == 0)
+    {
+        healthCheckDefault.service = "default";
+        healthCheckDefault.failing = false;
+        healthCheckDefault.minResponseTime = 0;
+        healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
+
+        success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckDefault);
+    }
+    LOGGER::info(string("HealthCkeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
+
+     // Verifica se o registro único para o health check "fallback" esta criado
+    HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
+
+    if (healthCheckFallBack.service.size() == 0)
+    {
+        healthCheckFallBack.service = "fallback";
+        healthCheckFallBack.failing = false;
+        healthCheckFallBack.minResponseTime = 0;
+        healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
+
+        success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckFallBack);
+    }
+    LOGGER::info(string("HealthCkeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
+
+    // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
+    sqlite3_close(database);
+    //--
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
