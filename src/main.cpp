@@ -1124,9 +1124,7 @@ public:
                 requestedAt DATETIME NOT NULL,
                 defaultService TINYINT NOT NULL,
                 processed TINYINT NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
+            );           
         )";
 
         char *error;

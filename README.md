@@ -275,7 +275,7 @@ CREATE TABLE IF NOT EXISTS payments (
                 defaultService TINYINT NOT NULL,
                 processed TINYINT NOT NULL
             );
-
+-- Pode ser criado, se houver necessidade de realizar buscas pela coluna
 CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
 ```
 
