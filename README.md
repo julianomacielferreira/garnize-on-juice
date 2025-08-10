@@ -42,10 +42,14 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ### Como compilar e depurar (com gdb)
 
-Certifique-se de que você tenha a biblioteca SQLite instalada no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar a biblioteca com o seguinte comando:
+Certifique-se de que você tenha a biblioteca SQLite e cURL instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
 ```bash
 $ sudo apt-get install libsqlite3-dev
+```
+
+```bash
+$ sudo apt-get install libcurl4-openssl-dev 
 ```
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
