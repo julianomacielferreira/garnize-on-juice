@@ -4,7 +4,7 @@ Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https:/
 
 O objetivo é processar o máximo de pagamentos possível.
 
-Para entender melhor as soluções e decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará _insights_ sobre os obstáculos enfrentados durante o desenvolvimento 
+Para entender melhor as soluções, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
@@ -37,9 +37,10 @@ $ curl --location --request POST 'http://localhost:9999/payments' \
 
 ```json
 {
-    "message": "payment processed successfully"
+  "message": "payment processed successfully"
 }
 ```
+
 </details>
 
 ---
@@ -55,16 +56,17 @@ $ curl --location --request GET 'http://localhost:9999/payments-summary?from=202
 
 ```json
 {
-    "default" : {
-        "totalRequests": 43236,
-        "totalAmount": 415542345.98
-    },
-    "fallback" : {
-        "totalRequests": 423545,
-        "totalAmount": 329347.34
-    }
+  "default": {
+    "totalRequests": 43236,
+    "totalAmount": 415542345.98
+  },
+  "fallback": {
+    "totalRequests": 423545,
+    "totalAmount": 329347.34
+  }
 }
 ```
+
 </details>
 
 ---
@@ -85,11 +87,11 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 ```json
 {
-    "message": "database purged"
+  "message": "database purged"
 }
 ```
-</details>
 
+</details>
 
 ### Estrutura do Projeto
 
@@ -127,20 +129,20 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 ./compile.sh --debug # Compila para depuração
 ```
 
-Para depurar o código, é necessário ter o ``GDB (GNU Debugger)`` instalado em sua máquina e usar a extensão ``"C/C++"`` do VSCode, que inclui suporte ao GDB.
+Para depurar o código, é necessário ter o `GDB (GNU Debugger)` instalado em sua máquina e usar a extensão `"C/C++"` do VSCode, que inclui suporte ao GDB.
 
-Por exemplo, no Ubuntu, você pode usar o seguinte comando para instalar o ``GDB (GNU Debugger)``:
+Por exemplo, no Ubuntu, você pode usar o seguinte comando para instalar o `GDB (GNU Debugger)`:
 
 ```bash
 sudo apt-get install gdb
 ```
 
-É possível instalar a extensão ``"C/C++"`` diretamente no VSCode ou baixá-la do marketplace:
+É possível instalar a extensão `"C/C++"` diretamente no VSCode ou baixá-la do marketplace:
 
 - [C/C++ for Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools)
 - [C/C++ Extension Pack](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cpptools-extension-pack)
 
- O arquivo ``launch.json`` no diretório ``.vscode`` do projeto já configura a depuração no VSCode.
+O arquivo `launch.json` no diretório `.vscode` do projeto já configura a depuração no VSCode.
 
 **Não é necessário nenhuma build tool (make, cmake, etc.).**
 
@@ -155,29 +157,32 @@ Pré-requisitos
 Passo a Passo
 
 1. Abra o terminal: Abra o terminal e navegue até a raiz do projeto.
-2. Verifique se o Docker está funcionando: Execute o comando ``docker --version`` para verificar se o Docker está instalado e funcionando corretamente.
+2. Verifique se o Docker está funcionando: Execute o comando `docker --version` para verificar se o Docker está instalado e funcionando corretamente.
 
 ```bash
 $ docker --version
 ```
+
 ```bash
 Docker version 28.1.1, build 4eba377
 ```
 
-3. Verifique se o Docker Compose está funcionando: Execute o comando ``docker-compose --version`` para verificar se o Docker Compose está instalado e funcionando corretamente.
+3. Verifique se o Docker Compose está funcionando: Execute o comando `docker-compose --version` para verificar se o Docker Compose está instalado e funcionando corretamente.
 
 ```bash
 $ docker-compose --version
 ```
+
 ```bash
 docker-compose version 1.29.2, build 5becea4c
 ```
 
-4. Construa as imagens: Execute o comando ``docker-compose build`` para construir as imagens Docker definidas no arquivo ``docker-compose.yml``.
+4. Construa as imagens: Execute o comando `docker-compose build` para construir as imagens Docker definidas no arquivo `docker-compose.yml`.
 
 ```bash
 $ docker-compose build
 ```
+
 ```bash
 WARNING: Some networks were defined but are not used by any service: payment-processor
 Building garnize-on-juice
@@ -203,11 +208,12 @@ docker:default
 
 ```
 
-5. Inicie os contêineres: Execute o comando ``docker-compose up`` para iniciar os contêineres Docker definidos no arquivo ``docker-compose.yml``.
+5. Inicie os contêineres: Execute o comando `docker-compose up` para iniciar os contêineres Docker definidos no arquivo `docker-compose.yml`.
 
 ```bash
 $ docker-compose up
 ```
+
 ```bash
 WARNING: Some networks were defined but are not used by any service: payment-processor
 Creating network "garnize-on-juice_default" with the default driver
@@ -215,36 +221,31 @@ Creating garnize-on-juice_garnize-on-juice_1 ... done
 Attaching to garnize-on-juice_garnize-on-juice_1
 garnize-on-juice_1  | Info: Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET
 ```
+
 Observações
 
-- Se você quiser rodar os contêineres em segundo plano, pode usar o comando ``docker-compose up -d``.
-- Se você quiser parar os contêineres, pode usar o comando ``docker-compose stop``.
-- Se você quiser remover os contêineres, pode usar o comando ``docker-compose down``.
+- Se você quiser rodar os contêineres em segundo plano, pode usar o comando `docker-compose up -d`.
+- Se você quiser parar os contêineres, pode usar o comando `docker-compose stop`.
+- Se você quiser remover os contêineres, pode usar o comando `docker-compose down`.
 
 ### Modelo do Banco de Dados
 
 ![Database Model](static/DATABASE_MODEL.png)
 
-### Desafios
+### Detalhes Técnicos e Possíveis Melhorias
 
-Durante a resolução, encontrei alguns desafios (**pessoais**) interessantes:
+Obviamente, a primeira melhoria seria melhorar no "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
 
-- Escrever a lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
+Algumas soluções que implementei "na mão" foram:
+
+- Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
 - Implementar a lógica usando multithreading.
 
-@TODO
-
-### Detalhes Técnicos e Possíveis Melhorias
-
-Obviamente, a primeira melhoria seria programar ao "estilo C++". Tanto em relação a separação dos arquivos, quanto com relação a arquitetura da solução.
-
-Abaixo, estão outras melhorias possíveis.
-
 #### Estrutura de classes criada
 
-Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo javascript. Uma prática recomendada é criar os respectivos arquivos
+Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo ``javascript``. A principal melhoria seria criar os respectivos arquivos
 de cabeçalhos (headers .h) e separá-las do arquivo principal.
 
 @TODO
