@@ -276,6 +276,16 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
 ```
 
+#### A coluna ``correlationId`` deveria ser BLOB e não TEXT
+
+Salvar UUIDs como campos ``TEXT`` no SQLite pode ter perda de desempenho em comparação com salvar como campos ``BLOB``.
+
+Algumas razões pelas quais isso pode ocorrer:
+
+1. Tamanho do campo: Os UUIDs como strings ``TEXT`` ocupam mais espaço do que os UUIDs como ``BLOB``, pois as strings precisam de caracteres adicionais para representar os traços e outros caracteres. Isso pode aumentar o tamanho da tabela e afetar o desempenho de consultas.
+2. Indexação: A indexação de campos ``TEXT`` pode ser mais lenta do que a indexação de campos ``BLOB``, pois as strings precisam ser comparadas caractere por caractere.
+3. Conversão: Ao salvar UUIDs como ``TEXT``, o SQLite precisa converter o ``UUID`` para uma string, o que pode ser um processo lento.
+
 #### Estrutura de classes criada
 
 Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo `javascript`. A principal melhoria seria criar os respectivos arquivos
