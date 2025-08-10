@@ -1563,12 +1563,12 @@ public:
  */
 int main()
 {
-    int server_fd;
+    int socket_file_descriptor;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
 
     // Criar o socket
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+    if ((socket_file_descriptor = socket(AF_INET, SOCK_STREAM, 0)) == 0)
     {
         LOGGER::error("Falha ao criar o socket");
         return EXIT_FAILURE;
@@ -1578,7 +1578,7 @@ int main()
     // mesmo se o socket estiver em um estado de espera (TIME_WAIT).
     // Isso evita erros de "endereço em uso" ao reiniciar o servidor.
     int ALLOW_REBIND_SAME_PORT = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &ALLOW_REBIND_SAME_PORT, sizeof(ALLOW_REBIND_SAME_PORT)) < 0)
+    if (setsockopt(socket_file_descriptor, SOL_SOCKET, SO_REUSEADDR, &ALLOW_REBIND_SAME_PORT, sizeof(ALLOW_REBIND_SAME_PORT)) < 0)
     {
         LOGGER::error("Falha ao setar SO_REUSEADDR");
         return EXIT_FAILURE;
@@ -1593,14 +1593,14 @@ int main()
     address.sin_port = htons(Constants::PORT);
 
     // Bind do socket ao endereço
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0)
+    if (bind(socket_file_descriptor, (struct sockaddr *)&address, sizeof(address)) < 0)
     {
         LOGGER::error("Falha ao tentar fazer o bind do socket ao IP:PORT");
         return EXIT_FAILURE;
     }
 
     // Escutar conexões
-    if (listen(server_fd, 3) < 0)
+    if (listen(socket_file_descriptor, 3) < 0)
     {
         LOGGER::error("Falha ao escutar conexões");
         return EXIT_FAILURE;
@@ -1630,7 +1630,7 @@ int main()
     while (true)
     {
         // Aceitar uma conexão
-        int new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen);
+        int new_socket = accept(socket_file_descriptor, (struct sockaddr *)&address, (socklen_t *)&addrlen);
         if (new_socket < 0)
         {
             LOGGER::error("Falha ao aceitar conexão");
