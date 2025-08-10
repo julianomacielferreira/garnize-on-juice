@@ -114,6 +114,7 @@ public:
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
      */
+    // inline static const string PROCESSOR_DEFAULT = "http://payment-processor-default:8080";
     inline static const string PROCESSOR_DEFAULT = "http://localhost:8001";
 
     /**
@@ -121,6 +122,7 @@ public:
      *
      * Essa URL é usada como fallback quando o processador de pagamentos padrão não está disponível.
      */
+    // inline static const string PROCESSOR_FALLBACK = "http://payment-processor-fallback:8080";
     inline static const string PROCESSOR_FALLBACK = "http://localhost:8002";
 
     /**
@@ -817,7 +819,7 @@ public:
 
         SQLiteDatabaseUtils::closeConnection(database);
 
-        if (healthCheckDefault.service.size() > 0)
+        if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
         {
             LOGGER::info(string("HealthCkeck 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
 
@@ -850,7 +852,7 @@ public:
 
         SQLiteDatabaseUtils::closeConnection(database);
 
-        if (healthCheckFallBack.service.size() > 0)
+        if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
         {
             LOGGER::info(string("HealthCkeck 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
 
@@ -902,7 +904,9 @@ public:
         CURL *curl;
         string URL;
 
-        // Encapsular em um método
+        /**
+         * @todo Débito técnico: Refatorar esse código em um método específico
+         */
         //	Faz a request para o servico
         LOGGER::info("Fazendo request de health check para a o serviço 'default'");
         curl = curl_easy_init();
@@ -959,7 +963,9 @@ public:
         }
         //--
 
-        // Encapsular em um método
+        /**
+         * @todo Débito técnico: Refatorar esse código em um método específico
+         */
         //	Faz a request para o servico
         LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
         curl = curl_easy_init();
@@ -1122,7 +1128,7 @@ public:
         stringBuilder << "{\"correlationId\": \"";
         stringBuilder << payment.correlationId;
         stringBuilder << "\", \"amount\": ";
-        stringBuilder << std::to_string(payment.amount);
+        stringBuilder << to_string(payment.amount);
         stringBuilder << ", \"requestedAt\" : \"";
         stringBuilder << payment.requestedAt;
         stringBuilder << "\"}";
@@ -1180,19 +1186,17 @@ public:
         // Parse do corpo da requisição
         map<string, string> json = JsonParser::parseJson(body);
 
-        string correlationId = json.at(Constants::KEY_CORRELATION_ID);
-
-        double amount = stod(json.at(Constants::KEY_AMOUNT));
-
-        // Cria o payload e chama o default processor ou o fallback
+        // Cria o payload
         Payment payment;
-        // Descomentar linha abaixo pois o valor vai ser enviado na request
-        // payment.correlationId = correlationId
+        /**
+         * @todo Descomentar linha abaixo pois o valor vai ser enviado na request
+         */
+        // payment.correlationId = json.at(Constants::KEY_CORRELATION_ID);
         payment.correlationId = UUIDGenerator::createUUID();
-        payment.amount = amount;
+        payment.amount = stod(json.at(Constants::KEY_AMOUNT));
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
-        LOGGER::info("Payment(correlationId=" + payment.correlationId + ", amount=" + std::to_string(payment.amount) + ", requestedAt=" + payment.requestedAt + ")");
+        LOGGER::info("Payment(correlationId=" + payment.correlationId + ", amount=" + to_string(payment.amount) + ", requestedAt=" + payment.requestedAt + ")");
 
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
@@ -1365,7 +1369,7 @@ public:
                 string body = request.substr(bodyPos + 4);
                 map<string, string> response = PaymentProcessor::payment(body);
 
-                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
 
                 send(socket, response.at("response").c_str(), response.at("response").size(), 0);
@@ -1388,7 +1392,7 @@ public:
                 string query = path.substr(queryPos + 1);
                 map<string, string> response = PaymentProcessor::paymentSummary(query);
 
-                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+                string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
 
                 send(socket, response.at("response").c_str(), response.at("response").size(), 0);
@@ -1416,7 +1420,7 @@ public:
                 {"status", Constants::OK_RESPONSE},
                 {"response", "{ \"message\": \"" + msg + "\", \"success\": true}"}};
 
-            string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + std::to_string(response.at("response").size()) + "\r\n\r\n";
+            string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
             send(socket, headers.c_str(), headers.size(), 0);
 
             send(socket, response.at("response").c_str(), response.at("response").size(), 0);
