@@ -98,6 +98,7 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 ```
 .
 ├── compile.sh
+├── DATABASE_MODEL.mwb
 ├── docker-compose.yml
 ├── Dockerfile
 ├── LICENSE
@@ -105,6 +106,7 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 ├── src
 │   └── main.cpp
 ├── static
+│   ├── DATABASE_MODEL.png
 │   ├── garnize-on-juice.png
 │   └── mesa-digitalizadora-wacom.jpg
 ├── test-purge-databse.sh
@@ -245,7 +247,7 @@ Muitas partes da solução eu implementei "na mão", porém, não implementei tr
 
 #### Estrutura de classes criada
 
-Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo ``javascript``. A principal melhoria seria criar os respectivos arquivos
+Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo `javascript`. A principal melhoria seria criar os respectivos arquivos
 de cabeçalhos (headers .h) e separá-las do arquivo principal.
 
 @TODO
