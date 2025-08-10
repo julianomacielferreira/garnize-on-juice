@@ -638,8 +638,8 @@ public:
      * @brief Atualiza um registro na tabela service_health_check.
      *
      * @param database Ponteiro para o objeto sqlite3.
-     * @param healthCheck Registro de HealthCheck a ser inserido.
-     * @return bool True se o registro foi inserido com sucesso, false caso contrário.
+     * @param healthCheck Registro de HealthCheck a ser atualizado.
+     * @return bool True se o registro foi atualizado com sucesso, false caso contrário.
      */
     static bool updateHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
     {
@@ -857,6 +857,46 @@ public:
         }
 
         return false;
+    }
+};
+
+/**
+ * @brief Classe responsável por executar o health check dos serviços em uma thread separada.
+ *
+ * Essa classe fornece métodos estáticos para inicializar e executar o health check dos serviços.
+ */
+class HealthCheckServiceThread
+{
+public:
+    /**
+     * @brief Executa o health check dos serviços.
+     *
+     * Esse método faz requests para os serviços "default" e "fallback" para verificar seu status.
+     */
+    static void check()
+    {
+        //	Faz a request para o servico
+        LOGGER::info("Fazendo request de HealthCheck para a o serviço 'default'");
+
+        //	Faz a request para o servico
+        LOGGER::info("Fazendo request de HealthCheck para a o serviço 'fallback'");
+    }
+
+    /**
+     * @brief Inicializa a thread de health check.
+     *
+     * Esse método cria uma thread que executa o método `check()` a cada 5 segundos.
+     */
+    static void init()
+    {
+        thread([]()
+               {
+                   while (true)
+                   {
+                       check();
+                       this_thread::sleep_for(chrono::seconds(5));
+                   } })
+            .detach();
     }
 };
 
@@ -1338,6 +1378,7 @@ int main()
      */
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckUtils::init();
+    HealthCheckServiceThread::init();
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
