@@ -42,7 +42,7 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ### Como compilar e depurar (com gdb)
 
-Certifique-se de que você tenha a biblioteca SQLite e cURL instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
+Certifique-se de que você tenha a biblioteca SQLite, cURL e libuuid instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
 ```bash
 $ sudo apt-get install libsqlite3-dev
@@ -50,6 +50,10 @@ $ sudo apt-get install libsqlite3-dev
 
 ```bash
 $ sudo apt-get install libcurl4-openssl-dev
+```
+
+```bash
+$ sudo apt-get install uuid-dev
 ```
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
@@ -243,7 +247,6 @@ Muitas partes da solução eu implementei "na mão", porém, não implementei tr
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
-- Geração de UUIDs (Universally Unique Identifiers) para testar as requests sem usar a lib `libuuid`.
 
 #### Modelo do Banco de Dados
 

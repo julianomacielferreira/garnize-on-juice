@@ -34,6 +34,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <curl/curl.h>
+#include <uuid/uuid.h>
 #include <unistd.h>
 #include <sqlite3.h>
 
@@ -459,76 +460,26 @@ public:
 /**
  * @brief Classe responsável por gerar UUIDs (Universally Unique Identifiers).
  *
- * Essa classe fornece um método estático para gerar UUIDs baseados no datetime do sistema.
+ * Essa classe fornece um método estático para gerar UUIDs aleatórios.
  */
 class UUIDGenerator
 {
 public:
     /**
-     * @brief Gera um UUID baseado no datetime do sistema.
-     *
-     * Esse método usa o datetime do sistema para gerar um UUID. Ele combina o timestamp
-     * do sistema com números aleatórios para criar um UUID único.
-     *
-     * O UUID gerado é uma string no formato `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`, onde
-     * cada `x` é um dígito hexadecimal.
+     * @brief Gera um UUID aleatório.
      *
      * @return Um UUID gerado como uma string.
      */
     static string createUUID()
     {
-        // timestamp do sistema em nanossegundos.
-        auto now = chrono::high_resolution_clock::now();
+        uuid_t UUID;
+        uuid_generate(UUID);
 
-        // tempo atual em nanossegundos desde a época Unix (1 de janeiro de 1970, 00:00:00 UTC).
-        auto nanos = chrono::duration_cast<chrono::nanoseconds>(now.time_since_epoch()).count();
+        // Converte o UUID para uma string
+        char UUIDString[37];
+        uuid_unparse(UUID, UUIDString);
 
-        // Gera números aleatórios para combinar com o timestamp
-        //  Fonte de números aleatórios não determinística, ou seja, gera números aleatórios baseados em eventos aleatórios do sistema.
-        static random_device rd;
-
-        // Gerador de números aleatórios baseado no algoritmo Mersenne Twister.
-        // O objeto gen é inicializado com um valor de semente obtido a partir do objeto rd.
-        // A inicialização com um valor de semente aleatório garante que a sequência de números gerada
-        // seja diferente cada vez que o programa é executado.
-        static mt19937 gen(rd());
-
-        // Usado para gerar números aleatórios uniformemente distribuídos entre 0 e 15 (16 dígitos possíveis do Hexadecimal).
-        uniform_int_distribution<> dis(0, 15);
-
-        // Formata o UUID como uma string
-        stringstream stringBuilder;
-
-        // Configura o stream para usar a notação hexadecimal.
-        stringBuilder << std::hex;
-
-        // Obtém os 32 bits menos significativos do valor nanos.
-        stringBuilder << (nanos & 0xFFFFFFFF);
-        stringBuilder << "-";
-
-        // Obtém os próximos 16 bits do valor nanos.
-        stringBuilder << (nanos >> 32 & 0xFFFF);
-        stringBuilder << "-";
-
-        // Obtém os próximos 12 bits do valor nanos e define os 4 bits mais significativos para 0100, que é a versão 4 do UUID.
-        stringBuilder << ((nanos >> 48 & 0x0FFF) | 0x4000);
-
-        stringBuilder << "-";
-
-        // Gera um valor aleatório para a variante do UUID e define os 2 bits mais significativos para 10,
-        // que é a variante DCE (Distributed Computing Environment).
-        stringBuilder << ((dis(gen) & 0x3) | 0x8);
-
-        // Gera os demais componentes do UUID aleatoriamente.
-        stringBuilder << dis(gen);
-        stringBuilder << "-";
-
-        for (int i = 0; i < 12; i++)
-        {
-            stringBuilder << dis(gen);
-        }
-
-        return stringBuilder.str();
+        return UUIDString;
     }
 };
 
@@ -916,6 +867,7 @@ public:
          * @todo Débito técnico: Refatorar esse código em um método específico
          */
         //	Faz a request para o servico
+        cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'default'");
         curl = curl_easy_init();
         URL = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
@@ -975,6 +927,7 @@ public:
          * @todo Débito técnico: Refatorar esse código em um método específico
          */
         //	Faz a request para o servico
+        cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
         curl = curl_easy_init();
         URL = Constants::PROCESSOR_FALLBACK + Constants::HEALTH_CHECK_ENDPOINT;
@@ -1265,7 +1218,9 @@ public:
     {
         Timer timer;
 
-        map<string, string> responseMap;
+        map<string, string> responseMap = {
+            {"status", ""},
+            {"response", ""}};
 
         size_t pos = body.find(Constants::KEY_CORRELATION_ID);
 
@@ -1302,13 +1257,11 @@ public:
         payment.amount = stod(json.at(Constants::KEY_AMOUNT));
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
-        LOGGER::info("Payment(correlationId=" + payment.correlationId + ", amount=" + to_string(payment.amount) + ", requestedAt=" + payment.requestedAt + ")");
-
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
-        bool useDefault = HealthCheckUtils::checkDefault();
+        bool useDefaultService = HealthCheckUtils::checkDefault();
 
-        if (useDefault)
+        if (useDefaultService)
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
 
@@ -1316,33 +1269,87 @@ public:
             string payload = PaymentsJSONConverter::toJson(payment);
 
             // Fazer a curl request para o servico default, lembrar o default timeout
-            // CURLcode responseCode;
-            // struct curl_slist *headers = NULL;
-            // CURL *curl = curl_easy_init();
-            // string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
-            // string defaultResponseBuffer;
+            CURLcode responseCode;
+            struct curl_slist *headers = NULL;
+            CURL *curl = curl_easy_init();
+            string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
+            string defaultResponseBuffer;
+            long HTTP_RESPONSE_CODE = 0;
 
-            // if (curl)
-            // {
+            if (curl)
+            {
 
-            //     curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
-            //     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-            //     curl_easy_setopt(curl, CURLOPT_POST, 1L);
-            //     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
-            //     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-            //     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
+                curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+                curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+                curl_easy_setopt(curl, CURLOPT_POST, 1L);
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
+                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
+                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &defaultResponseBuffer);
+                curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
 
-            //     headers = curl_slist_append(headers, "Content-Type: application/json");
-            //     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+                headers = curl_slist_append(headers, "Content-Type: application/json");
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-            //     curl_easy_cleanup(curl);
-            // }
+                responseCode = curl_easy_perform(curl);
+
+                if (responseCode != CURLE_OK)
+                {
+                    LOGGER::error(string("Erro ao fazer curl request para payments 'default': ") + string(curl_easy_strerror(responseCode)));
+                }
+                else
+                {
+
+                    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
+
+                    LOGGER::info("Serviço 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
+
+                    if (HTTP_RESPONSE_CODE == 200)
+                    {
+                        map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
+
+                        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+                        if (database != nullptr)
+                        {
+                            // Inserir o registro de payments processado pelo payments default
+                            stringstream stringBuilder;
+                            stringBuilder << "Inserindo Payment(correlationId=";
+                            stringBuilder << payment.correlationId;
+                            stringBuilder << ", amount=";
+                            stringBuilder << to_string(payment.amount);
+                            stringBuilder << ", requestedAt=";
+                            stringBuilder << payment.requestedAt;
+                            stringBuilder << ", defaultService=true, processed=";
+                            stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
+                            stringBuilder << ")";
+
+                            LOGGER::info(stringBuilder.str());
+
+                            PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
+
+                            SQLiteDatabaseUtils::closeConnection(database);
+
+                            responseMap["status"] = Constants::CREATED_RESPONSE;
+                            responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
+                        }
+                    }
+                    else
+                    {
+                        responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+                        responseMap["response"] = "Erro na request payload: " + payload;
+                    }
+                }
+
+                curl_easy_cleanup(curl);
+                curl_slist_free_all(headers);
+            }
         }
         else
         {
-            bool useFallback = HealthCheckUtils::checkFallback();
+            bool useFallbackService = HealthCheckUtils::checkFallback();
 
-            if (useFallback)
+            if (useFallbackService)
             {
                 LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
             }
@@ -1357,10 +1364,6 @@ public:
          * 6) @todo Salvar os pagamentos que deram certo para retornar pelo paymemts summary (GET)
          * 7) @todo Lembrar: endpoint paymemts summary (GET) precisa retornar um resumo do que já foi processado em termos de pagamentos.
          */
-
-        // Aqui adicionar uma chamada a rinha
-        responseMap["status"] = Constants::CREATED_RESPONSE;
-        responseMap["response"] = "{ \"message\":\"payment processed successfull\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
 
         return responseMap;
     }
@@ -1492,6 +1495,7 @@ public:
 
         if (method == "POST" && path == Constants::PAYMENTS_ENDPOINT)
         {
+            cout << endl;
             LOGGER::info("POST request para /payments");
 
             size_t bodyPos = request.find("\r\n\r\n");
@@ -1515,6 +1519,7 @@ public:
         else if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
         {
 
+            cout << endl;
             LOGGER::info("GET request para /payments-summary");
 
             size_t queryPos = path.find("?");
@@ -1538,6 +1543,7 @@ public:
         else if (method == "POST" && path.find(Constants::PURGE_PAYMENTS_ENDPOINT) == 0)
         {
 
+            cout << endl;
             LOGGER::info("POST request para /purge-payments");
 
             string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
@@ -1559,6 +1565,7 @@ public:
         }
         else
         {
+            cout << endl;
             LOGGER::info("Essa request não está mapeada");
 
             string response = Constants::NOT_FOUND_RESPONSE;
