@@ -595,6 +595,8 @@ public:
             minResponseTime INTEGER NOT NULL,
             lastCheck DATETIME NOT NULL
         );
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) VALUES ('default', 0, 100, DATETIME('now')) WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) VALUES ('fallback', 0, 100, DATETIME('now')) WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
     )";
 
         char *error;
@@ -719,6 +721,88 @@ public:
 
             return healthCheck;
         }
+    }
+};
+
+/**
+ * @brief Classe utilitária para gerenciamento de health check.
+ *
+ * Essa classe fornece métodos estáticos para inicializar e verificar o health check dos serviços de pagamentos.
+ */
+class HealthCheckUtils
+{
+public:
+    /**
+     * @brief Inicializa o health check dos serviços de pagamentos.
+     *
+     * Esse método abre uma conexão com o banco de dados, cria a tabela de health check se necessário,
+     * verifica se os registros de health check para os serviços "default" e "fallback" estão criados,
+     * e fecha a conexão com o banco de dados.
+     *
+     * @return true se a inicialização foi bem-sucedida, false caso contrário.
+     *
+     * @note A conexão com o banco de dados é fechada após a inicialização.
+     * @see SQLiteDatabaseUtils::openConnection()
+     * @see SQLiteDatabaseUtils::createHealthCkeckTable()
+     * @see SQLiteDatabaseUtils::getLastHealthCheck()
+     * @see SQLiteDatabaseUtils::createHealthRecord()
+     */
+    static bool init()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
+        bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
+        LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
+
+        // Verifica se o registro único para o health check "default" esta criado
+        HealthCheck healthCheckDefault;
+        healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
+
+        if (healthCheckDefault.service.size() == 0)
+        {
+            healthCheckDefault.service = "default";
+            healthCheckDefault.failing = false;
+            healthCheckDefault.minResponseTime = 0;
+            healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
+
+            success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckDefault);
+        }
+        LOGGER::info(string("HealthCkeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
+
+        // Verifica se o registro único para o health check "fallback" esta criado
+        HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
+
+        if (healthCheckFallBack.service.size() == 0)
+        {
+            healthCheckFallBack.service = "fallback";
+            healthCheckFallBack.failing = false;
+            healthCheckFallBack.minResponseTime = 0;
+            healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
+
+            success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckFallBack);
+        }
+        LOGGER::info(string("HealthCkeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
+
+        // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
+        SQLiteDatabaseUtils::closeConnection(database);
+        //--
+
+        return true;
+    }
+
+    static bool check()
+    {
+
+        return false;
     }
 };
 
@@ -1177,50 +1261,7 @@ int main()
      * rodando a cada 5 segundos batendo no endpoint e salvando o resultado
      */
     LOGGER::info("Inicializando serviço de Health Check");
-    sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-    if (database == nullptr)
-    {
-        LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-        return EXIT_FAILURE;
-    }
-
-    // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
-    bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
-    LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
-
-    // Verifica se o registro único para o health check "default" esta criado
-    HealthCheck healthCheckDefault;
-    healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
-
-    if (healthCheckDefault.service.size() == 0)
-    {
-        healthCheckDefault.service = "default";
-        healthCheckDefault.failing = false;
-        healthCheckDefault.minResponseTime = 0;
-        healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
-
-        success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckDefault);
-    }
-    LOGGER::info(string("HealthCkeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
-
-    // Verifica se o registro único para o health check "fallback" esta criado
-    HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
-
-    if (healthCheckFallBack.service.size() == 0)
-    {
-        healthCheckFallBack.service = "fallback";
-        healthCheckFallBack.failing = false;
-        healthCheckFallBack.minResponseTime = 0;
-        healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
-
-        success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckFallBack);
-    }
-    LOGGER::info(string("HealthCkeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
-
-    // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-    SQLiteDatabaseUtils::closeConnection(database);
-    //--
+    HealthCheckUtils::init();
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
