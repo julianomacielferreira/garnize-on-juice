@@ -223,8 +223,18 @@ public:
         auto duration_us = chrono::duration_cast<std::chrono::microseconds>(end - start);
         auto duration_ns = chrono::duration_cast<std::chrono::nanoseconds>(end - start);
 
-        cout << "Tempo de execução da request: " << duration_ms.count() << " ms ("
-             << duration_us.count() << " us / " << duration_ns.count() << " ns)" << endl;
+        ostringstream stringBuilder;
+
+        stringBuilder << "Tempo de execução da request: ";
+        stringBuilder << duration_ms.count();
+        stringBuilder << " ms (";
+        stringBuilder << duration_us.count();
+        stringBuilder << " us / ";
+        stringBuilder << duration_ns.count();
+        stringBuilder << " ns)";
+        stringBuilder << endl;
+
+        LOGGER::info(stringBuilder.str());
     }
 
 private:
@@ -397,16 +407,20 @@ public:
         auto now_time_t = chrono::system_clock::to_time_t(now);
         auto now_tm = *gmtime(&now_time_t);
 
-        // Formatar a data e hora no formato ISO
-        ostringstream outputStringBuffer;
+        // Formata a data e hora no formato ISO
+        ostringstream stringBuilder;
 
-        outputStringBuffer << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
+        stringBuilder << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
 
         auto fracao_segundo = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
-        outputStringBuffer << "." << setfill('0') << setw(3) << fracao_segundo.count() << "Z";
+        stringBuilder << ".";
+        stringBuilder << setfill('0');
+        stringBuilder << setw(3);
+        stringBuilder << fracao_segundo.count();
+        stringBuilder << "Z";
 
-        return outputStringBuffer.str();
+        return stringBuilder.str();
     }
 };
 
@@ -451,38 +465,38 @@ public:
         uniform_int_distribution<> dis(0, 15);
 
         // Formata o UUID como uma string
-        stringstream stringBuffer;
+        stringstream stringBuilder;
 
         // Configura o stream para usar a notação hexadecimal.
-        stringBuffer << std::hex;
+        stringBuilder << std::hex;
 
         // Obtém os 32 bits menos significativos do valor nanos.
-        stringBuffer << (nanos & 0xFFFFFFFF);
-        stringBuffer << "-";
+        stringBuilder << (nanos & 0xFFFFFFFF);
+        stringBuilder << "-";
 
         // Obtém os próximos 16 bits do valor nanos.
-        stringBuffer << (nanos >> 32 & 0xFFFF);
-        stringBuffer << "-";
+        stringBuilder << (nanos >> 32 & 0xFFFF);
+        stringBuilder << "-";
 
         // Obtém os próximos 12 bits do valor nanos e define os 4 bits mais significativos para 0100, que é a versão 4 do UUID.
-        stringBuffer << ((nanos >> 48 & 0x0FFF) | 0x4000);
+        stringBuilder << ((nanos >> 48 & 0x0FFF) | 0x4000);
 
-        stringBuffer << "-";
+        stringBuilder << "-";
 
         // Gera um valor aleatório para a variante do UUID e define os 2 bits mais significativos para 10,
         // que é a variante DCE (Distributed Computing Environment).
-        stringBuffer << ((dis(gen) & 0x3) | 0x8);
+        stringBuilder << ((dis(gen) & 0x3) | 0x8);
 
         // Gera os demais componentes do UUID aleatoriamente.
-        stringBuffer << dis(gen);
-        stringBuffer << "-";
+        stringBuilder << dis(gen);
+        stringBuilder << "-";
 
         for (int i = 0; i < 12; i++)
         {
-            stringBuffer << dis(gen);
+            stringBuilder << dis(gen);
         }
 
-        return stringBuffer.str();
+        return stringBuilder.str();
     }
 };
 
@@ -766,9 +780,10 @@ public:
             return false;
         }
 
-        // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
         bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
         LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
+
+        // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
 
         /**
          * @todo Remover código abaixo, ele é desnecessário aqui
@@ -936,37 +951,37 @@ public:
      */
     static string summaryToJson(const PaymentsSummary &summary)
     {
-        stringstream stringBuffer;
+        stringstream stringBuilder;
 
-        stringBuffer << std::fixed << std::setprecision(2);
+        stringBuilder << std::fixed;
+        stringBuilder << std::setprecision(2);
+        stringBuilder << "{\"default\":{\"totalRequests\":";
+        stringBuilder << summary.defaultStats.totalRequests;
+        stringBuilder << ",\"totalAmount\":";
+        stringBuilder << summary.defaultStats.totalAmount;
+        stringBuilder << "},\"fallback\":{\"totalRequests\":";
+        stringBuilder << summary.fallbackStats.totalRequests;
+        stringBuilder << ",\"totalAmount\":";
+        stringBuilder << summary.fallbackStats.totalAmount;
+        stringBuilder << "}}";
 
-        stringBuffer << "{\"default\":{\"totalRequests\":"
-                     << summary.defaultStats.totalRequests
-                     << ",\"totalAmount\":"
-                     << summary.defaultStats.totalAmount
-                     << "},\"fallback\":{\"totalRequests\":"
-                     << summary.fallbackStats.totalRequests
-                     << ",\"totalAmount\":"
-                     << summary.fallbackStats.totalAmount
-                     << "}}";
-
-        return stringBuffer.str();
+        return stringBuilder.str();
     }
 
     static string toJson(const Payment &payment)
     {
 
-        stringstream stringBuffer;
+        stringstream stringBuilder;
 
-        stringBuffer << "{\"correlationId\": \""
-                     << payment.correlationId
-                     << "\", \"amount\": "
-                     << std::to_string(payment.amount)
-                     << ", \"requestedAt\" : \""
-                     << payment.requestedAt
-                     << "\"}";
+        stringBuilder << "{\"correlationId\": \"";
+        stringBuilder << payment.correlationId;
+        stringBuilder << "\", \"amount\": ";
+        stringBuilder << std::to_string(payment.amount);
+        stringBuilder << ", \"requestedAt\" : \"";
+        stringBuilder << payment.requestedAt;
+        stringBuilder << "\"}";
 
-        return stringBuffer.str();
+        return stringBuilder.str();
     }
 };
 
@@ -1036,6 +1051,20 @@ public:
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
         bool useDefault = HealthCheckUtils::checkDefault();
+
+        if (useDefault)
+        {
+            LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
+        }
+        else
+        {
+            bool useFallback = HealthCheckUtils::checkFallback();
+
+            if (useFallback)
+            {
+                LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
+            }
+        }
 
         /**
          * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
