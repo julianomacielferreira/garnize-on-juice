@@ -1136,9 +1136,20 @@ public:
     }
 };
 
+/**
+ * @class PaymentsUtils
+ * @brief Classe utilitária para manipular a tabela de pagamentos no banco de dados SQLite.
+ */
 class PaymentsUtils
 {
 public:
+    /**
+     * @brief Inicializa a tabela de pagamentos no banco de dados SQLite.
+     *
+     * Cria a tabela de pagamentos e o índice para a coluna correlationId se não existirem.
+     *
+     * @note Essa função deve ser chamada apenas uma vez durante a inicialização do sistema.
+     */
     static void init()
     {
 
@@ -1160,7 +1171,7 @@ public:
 
         int response = sqlite3_exec(database, SQL_QUERY, nullptr, nullptr, &error);
 
-         if (response != SQLITE_OK)
+        if (response != SQLITE_OK)
         {
             LOGGER::error(string("Erro ao criar tabela payments: ") + string(error));
 
@@ -1168,7 +1179,55 @@ public:
         }
 
         SQLiteDatabaseUtils::closeConnection(database);
-        
+    }
+
+    /**
+     * @brief Insere um registro na tabela payments.
+     *
+     * @param database Ponteiro para o objeto sqlite3.
+     * @param payment Registro de pagamento a ser inserido.
+     * @param defaultService Flag que indica se servico 'default' foi usado
+     * @param processed Flag indicando se o pagamento foi processado ou não
+     * @return bool True se o registro foi inserido com sucesso, false caso contrário.
+     */
+    static bool insert(sqlite3 *database, const Payment &payment, bool defaultService, bool processed)
+    {
+        const char *sql = R"(
+            INSERT INTO payments (correlationId, amount, requestedAt, defaultService, processed)
+            VALUES (?, ?, ?, ?, ?);
+        )";
+
+        sqlite3_stmt *statement;
+
+        int response = sqlite3_prepare_v2(database, sql, -1, &statement, nullptr);
+
+        if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
+
+            return false;
+        }
+
+        sqlite3_bind_text(statement, 1, payment.correlationId.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_double(statement, 2, payment.amount);
+        sqlite3_bind_text(statement, 3, payment.requestedAt.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_int(statement, 4, defaultService ? 1 : 0);
+        sqlite3_bind_int(statement, 5, processed ? 1 : 0);
+
+        response = sqlite3_step(statement);
+
+        if (response != SQLITE_DONE)
+        {
+            LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
+
+            sqlite3_finalize(statement);
+
+            return false;
+        }
+
+        sqlite3_finalize(statement);
+
+        return true;
     }
 };
 
