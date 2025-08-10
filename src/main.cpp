@@ -518,6 +518,20 @@ struct HealthCheck
 class SQLiteDatabaseUtils
 {
 public:
+    static bool setUpMultiThreadedMode()
+    {
+        // Configura o SQLite para funcionar em modo multi-thread
+        int response = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
+
+        if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao configurar o modo multi-thread: ") + string(sqlite3_errstr(response)));
+
+            return false;
+        }
+
+        return true;
+    }
     /**
      * @brief Abre uma conexão com o banco de dados SQLite local definido em Constants::DATABASE_NAME.
      *
@@ -528,20 +542,9 @@ public:
     static sqlite3 *openConnection()
     {
 
-        // Configura o SQLite para funcionar em modo multi-thread
-        int response = sqlite3_config(SQLITE_CONFIG_MULTITHREAD);
-
-        if (response != SQLITE_OK)
-        {
-
-            LOGGER::error(string("Erro ao configurar o modo multi-thread: ") + string(sqlite3_errstr(response)));
-
-            return nullptr;
-        }
-
         sqlite3 *DB;
 
-        response = sqlite3_open(Constants::DATABASE_NAME, &DB);
+        int response = sqlite3_open(Constants::DATABASE_NAME, &DB);
 
         if (response)
         {
@@ -551,6 +554,8 @@ public:
 
             return nullptr;
         }
+
+        LOGGER::info("Abriu conexão com o banco de dados.");
 
         return DB;
     }
@@ -1320,6 +1325,13 @@ int main()
         LOGGER::error("Falha ao escutar conexões");
         return EXIT_FAILURE;
     }
+
+    // Inicializa modo multithread do SQLite
+    if (!SQLiteDatabaseUtils::setUpMultiThreadedMode())
+    {
+        LOGGER::error("SQLite não funcionando em modo multithead");
+        return EXIT_FAILURE;
+    };
 
     /**
      * @todo Serviço de health check, uma única thread que ficará
