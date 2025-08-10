@@ -713,7 +713,9 @@ public:
         }
         else if (response == SQLITE_DONE)
         {
-            // Nenhum registro encontrado
+
+            LOGGER::info("Nenhum registro encontrado");
+
             sqlite3_finalize(statement);
 
             return healthCheck;
