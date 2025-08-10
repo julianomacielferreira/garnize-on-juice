@@ -676,6 +676,9 @@ public:
         WHERE service = ?
         ORDER BY lastCheck DESC
         LIMIT 1;
+
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
     )";
 
         sqlite3_stmt *statement;
