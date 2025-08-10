@@ -221,6 +221,10 @@ Observações
 - Se você quiser parar os contêineres, pode usar o comando ``docker-compose stop``.
 - Se você quiser remover os contêineres, pode usar o comando ``docker-compose down``.
 
+### Modelo do Banco de Dados
+
+![Database Model](static/DATABASE_MODEL.png)
+
 ### Desafios
 
 Durante a resolução, encontrei vários desafios interessantes que merecem destaque:
