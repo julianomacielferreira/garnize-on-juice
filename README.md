@@ -49,7 +49,7 @@ $ sudo apt-get install libsqlite3-dev
 ```
 
 ```bash
-$ sudo apt-get install libcurl4-openssl-dev 
+$ sudo apt-get install libcurl4-openssl-dev
 ```
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
@@ -243,11 +243,38 @@ Muitas partes da solução eu implementei "na mão", porém, não implementei tr
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
-- Geração de UUIDs (Universally Unique Identifiers) para testar as requests sem usar a lib ``libuuid``.
+- Geração de UUIDs (Universally Unique Identifiers) para testar as requests sem usar a lib `libuuid`.
 
 #### Modelo do Banco de Dados
 
 ![Database Model](static/DATABASE_MODEL.png)
+
+#### SQL em um arquivo externo
+
+O SQL para criar as tabelas está chumbado no código:
+
+```sql
+ CREATE TABLE IF NOT EXISTS service_health_check (
+                service TEXT CHECK(service IN ('default', 'fallback')) NOT NULL,
+                failing INTEGER NOT NULL,
+                minResponseTime INTEGER NOT NULL,
+                lastCheck DATETIME NOT NULL
+            );
+
+INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+
+INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
+
+CREATE TABLE IF NOT EXISTS payments (
+                correlationId TEXT NOT NULL,
+                amount REAL NOT NULL,
+                requestedAt DATETIME NOT NULL,
+                defaultService TINYINT NOT NULL,
+                processed TINYINT NOT NULL
+            );
+
+CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
+```
 
 #### Estrutura de classes criada
 
