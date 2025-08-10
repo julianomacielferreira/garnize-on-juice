@@ -595,8 +595,8 @@ public:
             minResponseTime INTEGER NOT NULL,
             lastCheck DATETIME NOT NULL
         );
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) VALUES ('default', 0, 100, DATETIME('now')) WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) VALUES ('fallback', 0, 100, DATETIME('now')) WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
     )";
 
         char *error;
@@ -676,10 +676,7 @@ public:
         WHERE service = ?
         ORDER BY lastCheck DESC
         LIMIT 1;
-
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
-    )";
+        )";
 
         sqlite3_stmt *statement;
 
@@ -766,6 +763,9 @@ public:
         bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
         LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
 
+        /**
+         * @todo Remover código abaixo, ele é desnecessário aqui
+         */
         // Verifica se o registro único para o health check "default" esta criado
         HealthCheck healthCheckDefault;
         healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
@@ -802,8 +802,69 @@ public:
         return true;
     }
 
-    static bool check()
+    /**
+     * @brief Verifica o serviço 'default' está funcionando.
+     *
+     *
+     * @return true se o serviço está OK, false caso contrário.
+     */
+    static bool checkDefault()
     {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        // Verifica se o servico "default" esta funcionando
+        HealthCheck healthCheckDefault;
+        healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        if (healthCheckDefault.service.size() > 0)
+        {
+            LOGGER::info(string("HealthCkeck 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @brief Verifica o serviço 'fallback' está funcionando.
+     *
+     *
+     * @return true se o serviço está OK, false caso contrário.
+     */
+    static bool checkFallback()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        // Verifica se o servico "fallback" esta funcionando
+        HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        if (healthCheckFallBack.service.size() > 0)
+        {
+            LOGGER::info(string("HealthCkeck 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
+
+            return true;
+        }
 
         return false;
     }
@@ -967,6 +1028,7 @@ public:
 
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
+        bool useDefault = HealthCheckUtils::checkDefault();
 
         /**
          * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
