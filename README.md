@@ -19,80 +19,6 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ```
 
-### Endpoints
-
-- **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
-
-```bash
-$ curl --location --request POST 'http://localhost:9999/payments' \
---header 'Content-Type: application/json' \
---data '{
-        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
-        "amount": 19.90
-    }'
-```
-
-<details>
-<summary><b>Response</b></summary>
-
-```json
-{
-  "message": "payment processed successfully"
-}
-```
-
-</details>
-
----
-
-- **`GET` /payments-summary?from={{ISO em UTC}}&to={{ISO em UTC}}** (Exibe detalhes das requisições de processamento de pagamentos.)
-
-```bash
-$ curl --location --request GET 'http://localhost:9999/payments-summary?from=2025-08-09T00%3A15%3A08.174Z&to=2025-08-09T00%3A15%3A08.174Z'
-```
-
-<details>
-<summary><b>Response</b></summary>
-
-```json
-{
-  "default": {
-    "totalRequests": 43236,
-    "totalAmount": 415542345.98
-  },
-  "fallback": {
-    "totalRequests": 423545,
-    "totalAmount": 329347.34
-  }
-}
-```
-
-</details>
-
----
-
-- **`POST` /purge-payments** (Endpoint para limpar o banco SQLite.)
-
-```bash
-$ curl --location --request POST 'http://localhost:9999/purge-payments' \
---header 'Content-Type: application/json' \
---data '{
-        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
-        "amount": 19.90
-    }'
-```
-
-<details>
-<summary><b>Response</b></summary>
-
-```json
-{
-  "message": "database purged"
-}
-```
-
-</details>
-
 ### Estrutura do Projeto
 
 ```
@@ -230,9 +156,79 @@ Observações
 - Se você quiser parar os contêineres, pode usar o comando `docker-compose stop`.
 - Se você quiser remover os contêineres, pode usar o comando `docker-compose down`.
 
-### Modelo do Banco de Dados
+### Endpoints
 
-![Database Model](static/DATABASE_MODEL.png)
+- **`POST` /payments** (Intermedia a requisição para o processamento de um pagamento.)
+
+```bash
+$ curl --location --request POST 'http://localhost:9999/payments' \
+--header 'Content-Type: application/json' \
+--data '{
+        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
+        "amount": 19.90
+    }'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+  "message": "payment processed successfully"
+}
+```
+
+</details>
+
+---
+
+- **`GET` /payments-summary?from={{ISO em UTC}}&to={{ISO em UTC}}** (Exibe detalhes das requisições de processamento de pagamentos.)
+
+```bash
+$ curl --location --request GET 'http://localhost:9999/payments-summary?from=2025-08-09T00%3A15%3A08.174Z&to=2025-08-09T00%3A15%3A08.174Z'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+  "default": {
+    "totalRequests": 43236,
+    "totalAmount": 415542345.98
+  },
+  "fallback": {
+    "totalRequests": 423545,
+    "totalAmount": 329347.34
+  }
+}
+```
+
+</details>
+
+---
+
+- **`POST` /purge-payments** (Endpoint para limpar o banco SQLite.)
+
+```bash
+$ curl --location --request POST 'http://localhost:9999/purge-payments' \
+--header 'Content-Type: application/json' \
+--data '{
+        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
+        "amount": 19.90
+    }'
+```
+
+<details>
+<summary><b>Response</b></summary>
+
+```json
+{
+  "message": "database purged"
+}
+```
+
+</details>
 
 ### Detalhes Técnicos e Possíveis Melhorias
 
@@ -244,6 +240,10 @@ Muitas partes da solução eu implementei "na mão", porém, não implementei tr
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
 - Implementar a lógica usando multithreading.
+
+#### Modelo do Banco de Dados
+
+![Database Model](static/DATABASE_MODEL.png)
 
 #### Estrutura de classes criada
 
