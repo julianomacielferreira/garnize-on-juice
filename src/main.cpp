@@ -559,39 +559,39 @@ public:
     static sqlite3 *openConnection()
     {
 
-        sqlite3 *DB;
+        sqlite3 *database;
 
-        int response = sqlite3_open(Constants::DATABASE_NAME, &DB);
+        int response = sqlite3_open(Constants::DATABASE_NAME, &database);
 
         if (response)
         {
-            LOGGER::error(string("Erro ao abrir conexão com o banco de dados: ") + string(sqlite3_errmsg(DB)));
+            LOGGER::error(string("Erro ao abrir conexão com o banco de dados: ") + string(sqlite3_errmsg(database)));
 
-            sqlite3_close(DB);
+            sqlite3_close(database);
 
             return nullptr;
         }
 
         LOGGER::info("Abriu conexão com o banco de dados.");
 
-        return DB;
+        return database;
     }
 
     /**
      * @brief Fecha uma conexão com o banco de dados SQLite local definido em Constants::DATABASE_NAME.
      *
-     * @param db Ponteiro para o objeto sqlite3.
+     * @param database Ponteiro para o objeto sqlite3.
      * @return bool True a conexão foi fechada com sucesso, false caso contrário.
      */
-    static bool closeConnection(sqlite3 *db)
+    static bool closeConnection(sqlite3 *database)
     {
 
-        int response = sqlite3_close(db);
+        int response = sqlite3_close(database);
 
         if (response != SQLITE_OK)
         {
 
-            LOGGER::error(string("Erro ao fechar conexão com o banco de dados: ") + string(sqlite3_errmsg(db)));
+            LOGGER::error(string("Erro ao fechar conexão com o banco de dados: ") + string(sqlite3_errmsg(database)));
 
             return false;
         }
@@ -604,30 +604,29 @@ public:
     /**
      * @brief Cria a tabela service_health_check no banco de dados se ela não existir.
      *
-     * @param db Ponteiro para o objeto sqlite3.
+     * @param database Ponteiro para o objeto sqlite3.
      * @return bool True se a tabela foi criada com sucesso, false caso contrário.
      */
-    static bool createHealthCkeckTable(sqlite3 *db)
+    static bool createHealthCkeckTable(sqlite3 *database)
     {
         const char *SQL_QUERY = R"(
-        CREATE TABLE IF NOT EXISTS service_health_check (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            service TEXT CHECK(service IN ('default', 'fallback')) NOT NULL,
-            failing INTEGER NOT NULL,
-            minResponseTime INTEGER NOT NULL,
-            lastCheck DATETIME NOT NULL
-        );
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
-        INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
-    )";
+            CREATE TABLE IF NOT EXISTS service_health_check (
+                service TEXT CHECK(service IN ('default', 'fallback')) NOT NULL,
+                failing INTEGER NOT NULL,
+                minResponseTime INTEGER NOT NULL,
+                lastCheck DATETIME NOT NULL
+            );
+            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
+        )";
 
         char *error;
 
-        int response = sqlite3_exec(db, SQL_QUERY, nullptr, nullptr, &error);
+        int response = sqlite3_exec(database, SQL_QUERY, nullptr, nullptr, &error);
 
         if (response != SQLITE_OK)
         {
-            LOGGER::error(string("Erro ao criar tabela: ") + string(error));
+            LOGGER::error(string("Erro ao criar tabela service_health_check: ") + string(error));
 
             sqlite3_free(error);
 
@@ -1137,13 +1136,49 @@ public:
     }
 };
 
+class PaymentsUtils
+{
+public:
+    static void init()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        const char *SQL_QUERY = R"(
+            CREATE TABLE IF NOT EXISTS payments (
+                correlationId TEXT NOT NULL,
+                amount REAL NOT NULL,
+                requestedAt DATETIME NOT NULL,
+                defaultService TINYINT NOT NULL,
+                processed TINYINT NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
+        )";
+
+        char *error;
+
+        int response = sqlite3_exec(database, SQL_QUERY, nullptr, nullptr, &error);
+
+         if (response != SQLITE_OK)
+        {
+            LOGGER::error(string("Erro ao criar tabela payments: ") + string(error));
+
+            sqlite3_free(error);
+        }
+
+        SQLiteDatabaseUtils::closeConnection(database);
+        
+    }
+};
+
 /**
  * @brief Classe responsável por lidar com pagamentos.
  *
  * Essa classe fornece métodos estáticos para lidar com requisições de pagamento, incluindo
  * a criação de pagamentos e o cálculo do total de pagamentos em um período.
  */
-class PaymentProcessor
+class PaymentsProcessor
 {
 public:
     /**
@@ -1274,10 +1309,10 @@ public:
 
         string to = query.substr(pos + 3);
 
-        // Calcula o total de pagamentos no período com a o banco de dados
         /**
-         * @todo Definir a query (usar parâmetros da query string)
+         * @todo Definir a query (usar parâmetros da query string 'from' e 'to')
          */
+        // Calcula o total de pagamentos no período com a o banco de dados
         PaymentsSummary paymentSummary;
         paymentSummary.defaultStats.totalRequests = 43236;
         paymentSummary.defaultStats.totalAmount = 415542345.98;
@@ -1367,7 +1402,7 @@ public:
             if (bodyPos != string::npos)
             {
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentProcessor::payment(body);
+                map<string, string> response = PaymentsProcessor::payment(body);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1390,7 +1425,7 @@ public:
             if (queryPos != string::npos)
             {
                 string query = path.substr(queryPos + 1);
-                map<string, string> response = PaymentProcessor::paymentSummary(query);
+                map<string, string> response = PaymentsProcessor::paymentSummary(query);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1521,6 +1556,10 @@ int main()
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckUtils::init();
     HealthCheckServiceThread::init();
+
+    // Cria a tabela e pagamentos se ela nao existir
+    LOGGER::info("Verificando tabelas do banco de dados");
+    PaymentsUtils::init();
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
