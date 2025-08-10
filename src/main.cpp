@@ -33,6 +33,7 @@
 #include <random>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <curl/curl.h>
 #include <unistd.h>
 #include <sqlite3.h>
 
