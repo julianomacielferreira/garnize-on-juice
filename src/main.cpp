@@ -1608,17 +1608,16 @@ int main()
         return EXIT_FAILURE;
     };
 
+    LOGGER::info("Verificando tabelas no banco de dados");
+    HealthCheckUtils::init();
+    PaymentsUtils::init();
+
     /**
      * @todo Serviço de health check, uma única thread que ficará
      * rodando a cada 5 segundos batendo no endpoint e salvando o resultado
      */
     LOGGER::info("Inicializando serviço de Health Check");
-    HealthCheckUtils::init();
     HealthCheckServiceThread::init();
-
-    // Cria a tabela e pagamentos se ela nao existir
-    LOGGER::info("Verificando tabelas do banco de dados");
-    PaymentsUtils::init();
 
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
 
