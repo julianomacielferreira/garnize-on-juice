@@ -238,6 +238,10 @@ Durante a resolução, encontrei alguns desafios (**pessoais**) interessantes:
 
 ### Detalhes Técnicos e Possíveis Melhorias
 
+Obviamente, a primeira melhoria seria programar ao "estilo C++". Tanto em relação a separação dos arquivos, quanto com relação a arquitetura da solução.
+
+Abaixo, estão outras melhorias possíveis.
+
 #### Estrutura de classes criada
 
 Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo javascript. Uma prática recomendada é criar os respectivos arquivos
