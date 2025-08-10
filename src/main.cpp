@@ -635,17 +635,16 @@ public:
     }
 
     /**
-     * @brief Insere um registro na tabela service_health_check.
+     * @brief Atualiza um registro na tabela service_health_check.
      *
      * @param database Ponteiro para o objeto sqlite3.
      * @param healthCheck Registro de HealthCheck a ser inserido.
      * @return bool True se o registro foi inserido com sucesso, false caso contrário.
      */
-    static bool createHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
+    static bool updateHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
     {
         const char *SQL_QUERY = R"(
-        INSERT INTO service_health_check (service, failing, minResponseTime, lastCheck)
-        VALUES (?, ?, ?, ?);
+        UPDATE service_health_check SET service = ?, failing = ?, minResponseTime = ?, lastCheck = ? WHERE service = ?;
     )";
 
         sqlite3_stmt *statement;
@@ -663,6 +662,7 @@ public:
         sqlite3_bind_int(statement, 2, healthCheck.failing);
         sqlite3_bind_int(statement, 3, healthCheck.minResponseTime);
         sqlite3_bind_text(statement, 4, healthCheck.lastCheck.c_str(), -1, SQLITE_STATIC);
+        sqlite3_bind_text(statement, 5, healthCheck.service.c_str(), -1, SQLITE_STATIC);
 
         response = sqlite3_step(statement);
 
@@ -784,38 +784,6 @@ public:
         LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
 
         // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
-
-        /**
-         * @todo Remover código abaixo, ele é desnecessário aqui
-         */
-        // Verifica se o registro único para o health check "default" esta criado
-        HealthCheck healthCheckDefault;
-        healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
-
-        if (healthCheckDefault.service.size() == 0)
-        {
-            healthCheckDefault.service = "default";
-            healthCheckDefault.failing = false;
-            healthCheckDefault.minResponseTime = 0;
-            healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
-
-            success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckDefault);
-        }
-        LOGGER::info(string("HealthCkeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
-
-        // Verifica se o registro único para o health check "fallback" esta criado
-        HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
-
-        if (healthCheckFallBack.service.size() == 0)
-        {
-            healthCheckFallBack.service = "fallback";
-            healthCheckFallBack.failing = false;
-            healthCheckFallBack.minResponseTime = 0;
-            healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
-
-            success = SQLiteDatabaseUtils::createHealthRecord(database, healthCheckFallBack);
-        }
-        LOGGER::info(string("HealthCkeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
 
         // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
         SQLiteDatabaseUtils::closeConnection(database);
