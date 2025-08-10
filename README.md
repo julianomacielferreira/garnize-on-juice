@@ -236,7 +236,7 @@ Observações
 
 Obviamente, a primeira melhoria seria melhorar no "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
 
-Algumas soluções que implementei "na mão" foram:
+Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer.
 
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
