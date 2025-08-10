@@ -1177,6 +1177,10 @@ public:
 
             sqlite3_free(error);
         }
+        else
+        {
+            LOGGER::info("Tabela de pagamentos OK");
+        }
 
         SQLiteDatabaseUtils::closeConnection(database);
     }
