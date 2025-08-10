@@ -155,7 +155,7 @@ public:
      * @brief Caminho padrão para o health check do processo.
      *
      * Essa constante define o caminho padrão que é usado para verificar a saúde do processo.
-     * O valor padrão é "payments/service-health".
+     * O valor padrão é "/payments/service-health".
      */
     inline static const string HEALTH_CHECK_ENDPOINT = "/payments/service-health";
 
@@ -870,23 +870,160 @@ class HealthCheckServiceThread
 {
 public:
     /**
+     * @brief Função de callback para escrever dados recebidos do libcurl.
+     *
+     * Essa função é chamada pelo libcurl para escrever dados recebidos em uma string.
+     *
+     * @param contents Ponteiro para os dados recebidos.
+     * @param size Tamanho de cada elemento dos dados.
+     * @param nmemb Número de elementos dos dados.
+     * @param userp Ponteiro para a string que irá armazenar os dados. Deve ser um ponteiro para um objeto std::string.
+     *
+     * @return O tamanho total dos dados escritos.
+     *
+     * @note Essa função assume que o ponteiro userp é válido e aponta para um objeto std::string.
+     */
+    static size_t curlCallback(void *contents, size_t size, size_t nmemb, void *userp)
+    {
+        ((std::string *)userp)->append((char *)contents, size * nmemb);
+
+        return size * nmemb;
+    }
+
+    /**
      * @brief Executa o health check dos serviços.
      *
      * Esse método faz requests para os serviços "default" e "fallback" para verificar seu status.
      */
     static void check()
     {
-        //	Faz a request para o servico
-        LOGGER::info("Fazendo request de HealthCheck para a o serviço 'default'");
 
+        CURLcode responseCode;
+        CURL *curl;
+        string URL;
+
+        // Encapsular em um método
         //	Faz a request para o servico
-        LOGGER::info("Fazendo request de HealthCheck para a o serviço 'fallback'");
+        LOGGER::info("Fazendo request de health check para a o serviço 'default'");
+        curl = curl_easy_init();
+        URL = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
+        string defaultResponseBuffer;
+
+        if (curl)
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &defaultResponseBuffer);
+
+            responseCode = curl_easy_perform(curl);
+
+            if (responseCode != CURLE_OK)
+            {
+                LOGGER::error(string("Erro ao fazer curl request para o serviço 'default': ") + string(curl_easy_strerror(responseCode)));
+            }
+            else
+            {
+
+                LOGGER::info(string("Dados recebidos: ") + string(defaultResponseBuffer));
+                LOGGER::info("Atualizando na base o registro do serviço 'default'");
+
+                map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
+
+                // Código que deve ser separado
+                sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+                if (database != nullptr)
+                {
+                    HealthCheck healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
+
+                    if (healthCheckDefault.service.size() > 0)
+                    {
+
+                        healthCheckDefault.service = "default";
+                        healthCheckDefault.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
+                        healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
+                        healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
+
+                        SQLiteDatabaseUtils::updateHealthRecord(database, healthCheckDefault);
+
+                        LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
+                    }
+                }
+
+                // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
+                SQLiteDatabaseUtils::closeConnection(database);
+            }
+
+            curl_easy_cleanup(curl); // Clean up the easy handle
+        }
+        //--
+
+        // Encapsular em um método
+        //	Faz a request para o servico
+        LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
+        curl = curl_easy_init();
+        URL = Constants::PROCESSOR_FALLBACK + Constants::HEALTH_CHECK_ENDPOINT;
+        string fallbackResponseBuffer;
+
+        if (curl)
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fallbackResponseBuffer);
+
+            responseCode = curl_easy_perform(curl);
+
+            if (responseCode != CURLE_OK)
+            {
+                LOGGER::error(string("Erro ao fazer curl request para o serviço 'fallback': ") + string(curl_easy_strerror(responseCode)));
+            }
+            else
+            {
+
+                LOGGER::info(string("Dados recebidos: ") + string(fallbackResponseBuffer));
+                LOGGER::info("Atualizando na base o registro do serviço 'fallback'");
+
+                map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
+
+                // Código que deve ser separado
+                sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+                if (database != nullptr)
+                {
+                    HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
+
+                    if (healthCheckFallBack.service.size() > 0)
+                    {
+
+                        //	Faz a request para o servico
+                        LOGGER::info("Fazendo request de HealthCheck para a o serviço fallback");
+
+                        healthCheckFallBack.service = "fallback";
+                        healthCheckFallBack.failing = false;
+                        healthCheckFallBack.minResponseTime = 0;
+                        healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
+
+                        SQLiteDatabaseUtils::updateHealthRecord(database, healthCheckFallBack);
+
+                        LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
+                    }
+                }
+
+                // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
+                SQLiteDatabaseUtils::closeConnection(database);
+            }
+
+            curl_easy_cleanup(curl); // Clean up the easy handle
+        }
     }
 
     /**
      * @brief Inicializa a thread de health check.
      *
      * Esse método cria uma thread que executa o método `check()` a cada 5 segundos.
+     * @note A thread é executada em um loop infinito, portanto é necessário ter um mecanismo para interromper a thread se necessário.
      */
     static void init()
     {
