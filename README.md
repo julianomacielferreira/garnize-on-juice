@@ -4,7 +4,7 @@ Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https:/
 
 O objetivo é processar o máximo de pagamentos possível.
 
-Para entender melhor as soluções e decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará insights sobre os obstáculos enfrentados durante o desenvolvimento 
+Para entender melhor as soluções e decisões técnicas adotadas, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**. Além disso, na seção **`Desafios`**, você encontrará _insights_ sobre os obstáculos enfrentados durante o desenvolvimento 
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
@@ -227,11 +227,12 @@ Observações
 
 ### Desafios
 
-Durante a resolução, encontrei vários desafios interessantes que merecem destaque:
+Durante a resolução, encontrei alguns desafios (**pessoais**) interessantes:
 
-- Escrever a lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas e quais as abordagens possíveis.
+- Escrever a lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
 - Chegar na expressão regular correta que limpava o JSON vindo da request body antes de tentar fazer o parsing.
+- Implementar a lógica usando multithreading.
 
 @TODO
 
