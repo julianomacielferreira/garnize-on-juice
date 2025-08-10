@@ -600,6 +600,119 @@ public:
 
         return true;
     }
+};
+
+/**
+ * @brief Classe utilitária para gerenciamento de health check.
+ *
+ * Essa classe fornece métodos estáticos para inicializar e verificar o health check dos serviços de pagamentos.
+ */
+class HealthCheckUtils
+{
+public:
+    /**
+     * @brief Inicializa o health check dos serviços de pagamentos.
+     *
+     * Esse método abre uma conexão com o banco de dados, cria a tabela de health check se necessário,
+     * verifica se os registros de health check para os serviços "default" e "fallback" estão criados,
+     * e fecha a conexão com o banco de dados.
+     *
+     * @return true se a inicialização foi bem-sucedida, false caso contrário.
+     *
+     * @note A conexão com o banco de dados é fechada após a inicialização.
+     * @see SQLiteDatabaseUtils::openConnection()
+     * @see SQLiteDatabaseUtils::createHealthCkeckTable()
+     * @see SQLiteDatabaseUtils::getLastHealthCheck()
+     * @see SQLiteDatabaseUtils::createHealthRecord()
+     */
+    static bool init()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        bool success = createHealthCkeckTable(database);
+        LOGGER::info(success ? "Tabela do health check OK" : "Erro ao verificar tabela do health check");
+
+        // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
+        SQLiteDatabaseUtils::closeConnection(database);
+        //--
+
+        return true;
+    }
+
+    /**
+     * @brief Verifica o serviço 'default' está funcionando.
+     *
+     *
+     * @return true se o serviço está OK, false caso contrário.
+     */
+    static bool checkDefault()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        // Verifica se o servico "default" esta funcionando
+        HealthCheck healthCheckDefault;
+        healthCheckDefault = getLastHealthCheck(database, "default");
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
+        {
+            LOGGER::info(string("HealthCkeck 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @brief Verifica o serviço 'fallback' está funcionando.
+     *
+     *
+     * @return true se o serviço está OK, false caso contrário.
+     */
+    static bool checkFallback()
+    {
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+        if (database == nullptr)
+        {
+            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
+
+            return false;
+        }
+
+        // Verifica se o servico "fallback" esta funcionando
+        HealthCheck healthCheckFallBack = getLastHealthCheck(database, "fallback");
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
+        {
+            LOGGER::info(string("HealthCkeck 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
+
+            return true;
+        }
+
+        return false;
+    }
 
     /**
      * @brief Cria a tabela service_health_check no banco de dados se ela não existir.
@@ -748,121 +861,6 @@ public:
 };
 
 /**
- * @brief Classe utilitária para gerenciamento de health check.
- *
- * Essa classe fornece métodos estáticos para inicializar e verificar o health check dos serviços de pagamentos.
- */
-class HealthCheckUtils
-{
-public:
-    /**
-     * @brief Inicializa o health check dos serviços de pagamentos.
-     *
-     * Esse método abre uma conexão com o banco de dados, cria a tabela de health check se necessário,
-     * verifica se os registros de health check para os serviços "default" e "fallback" estão criados,
-     * e fecha a conexão com o banco de dados.
-     *
-     * @return true se a inicialização foi bem-sucedida, false caso contrário.
-     *
-     * @note A conexão com o banco de dados é fechada após a inicialização.
-     * @see SQLiteDatabaseUtils::openConnection()
-     * @see SQLiteDatabaseUtils::createHealthCkeckTable()
-     * @see SQLiteDatabaseUtils::getLastHealthCheck()
-     * @see SQLiteDatabaseUtils::createHealthRecord()
-     */
-    static bool init()
-    {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
-
-        bool success = SQLiteDatabaseUtils::createHealthCkeckTable(database);
-        LOGGER::info(success ? "Tabela do Health Check OK" : "Erro ao verificar tabela do Health Check");
-
-        // Encapsular essa inicialização em uma classe Utils do HealthCheck que vai ser a que vai ter a thread de 5 em 5 segundos
-
-        // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-        SQLiteDatabaseUtils::closeConnection(database);
-        //--
-
-        return true;
-    }
-
-    /**
-     * @brief Verifica o serviço 'default' está funcionando.
-     *
-     *
-     * @return true se o serviço está OK, false caso contrário.
-     */
-    static bool checkDefault()
-    {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
-
-        // Verifica se o servico "default" esta funcionando
-        HealthCheck healthCheckDefault;
-        healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
-
-        SQLiteDatabaseUtils::closeConnection(database);
-
-        if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
-        {
-            LOGGER::info(string("HealthCkeck 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
-
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @brief Verifica o serviço 'fallback' está funcionando.
-     *
-     *
-     * @return true se o serviço está OK, false caso contrário.
-     */
-    static bool checkFallback()
-    {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
-
-        // Verifica se o servico "fallback" esta funcionando
-        HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
-
-        SQLiteDatabaseUtils::closeConnection(database);
-
-        if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
-        {
-            LOGGER::info(string("HealthCkeck 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
-
-            return true;
-        }
-
-        return false;
-    }
-};
-
-/**
  * @brief Classe responsável por executar o health check dos serviços em uma thread separada.
  *
  * Essa classe fornece métodos estáticos para inicializar e executar o health check dos serviços.
@@ -938,7 +936,7 @@ public:
 
                 if (database != nullptr)
                 {
-                    HealthCheck healthCheckDefault = SQLiteDatabaseUtils::getLastHealthCheck(database, "default");
+                    HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck(database, "default");
 
                     if (healthCheckDefault.service.size() > 0)
                     {
@@ -948,7 +946,7 @@ public:
                         healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
                         healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
 
-                        SQLiteDatabaseUtils::updateHealthRecord(database, healthCheckDefault);
+                        HealthCheckUtils::updateHealthRecord(database, healthCheckDefault);
 
                         LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
                     }
@@ -997,7 +995,7 @@ public:
 
                 if (database != nullptr)
                 {
-                    HealthCheck healthCheckFallBack = SQLiteDatabaseUtils::getLastHealthCheck(database, "fallback");
+                    HealthCheck healthCheckFallBack = HealthCheckUtils::getLastHealthCheck(database, "fallback");
 
                     if (healthCheckFallBack.service.size() > 0)
                     {
@@ -1010,7 +1008,7 @@ public:
                         healthCheckFallBack.minResponseTime = 0;
                         healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
 
-                        SQLiteDatabaseUtils::updateHealthRecord(database, healthCheckFallBack);
+                        HealthCheckUtils::updateHealthRecord(database, healthCheckFallBack);
 
                         LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
                     }
