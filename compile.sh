@@ -43,7 +43,7 @@ else
 fi
 
 # Compila o código C++ usando as flags de compilação definidas.
-g++ src/main.cpp $COMPILER_FLAGS -o $OUTPUT_NAME -lsqlite3
+g++ src/main.cpp $COMPILER_FLAGS -o $OUTPUT_NAME -lsqlite3 -lcurl
 
 # Verifica se a compilação foi bem-sucedida.
 if [ $? -eq 0 ]; then
