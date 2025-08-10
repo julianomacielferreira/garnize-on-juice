@@ -986,7 +986,7 @@ public:
      * A função assume que o socket é válido e que a requisição é bem-formada.
      * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
      */
-    static void handle(int socket)
+    static void handleWith(int socket)
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
@@ -1234,7 +1234,7 @@ int main()
             continue;
         }
 
-        thread thread(RequestHandler::handle, new_socket);
+        thread thread(RequestHandler::handleWith, new_socket);
         thread.detach();
     }
 
