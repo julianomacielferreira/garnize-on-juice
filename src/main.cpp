@@ -128,28 +128,28 @@ public:
     /**
      * @brief Endpoint para operações de pagamento.
      *
-     * Essa constante define o caminho base para operações de pagamento.
+     * Essa constante define o caminho base para operações de pagamento "/payments".
      */
     inline static const string PAYMENTS_ENDPOINT = "/payments";
 
     /**
      * @brief Endpoint para resumo de pagamentos.
      *
-     * Essa constante define o caminho para obter um resumo de pagamentos.
+     * Essa constante define o caminho para obter um resumo de pagamentos "/payments-summary".
      */
     inline static const string PAYMENTS_SUMMARY_ENDPOINT = "/payments-summary";
 
     /**
      * @brief Endpoint para limpar pagamentos.
      *
-     * Essa constante define o caminho para limpar o banco sqlite.
+     * Essa constante define o caminho para limpar o banco sqlite "/purge-payments".
      */
     inline static const string PURGE_PAYMENTS_ENDPOINT = "/purge-payments";
 
     /**
      * @brief Endpoint para resumo de pagamentos para administradores.
      *
-     * Essa constante define o caminho para obter um resumo de pagamentos com acesso de administrador.
+     * Essa constante define o caminho para obter um resumo de pagamentos com acesso de administrador "/admin/payments-summary".
      */
     inline static const string PAYMENTS_SUMMARY_ADMIN_ENDPOINT = "/admin/payments-summary";
 
@@ -247,6 +247,35 @@ private:
      * Registra o ponto de tempo quando o objeto é construído.
      */
     chrono::time_point<chrono::high_resolution_clock> start;
+};
+
+/**
+ * @brief Classe utilitária para fazer cURL requests.
+ *
+ */
+class CURLUtils
+{
+public:
+    /**
+     * @brief Função de callback para escrever dados recebidos do libcurl.
+     *
+     * Essa função é chamada pelo libcurl para escrever dados recebidos em uma string.
+     *
+     * @param contents Ponteiro para os dados recebidos.
+     * @param size Tamanho de cada elemento dos dados.
+     * @param nmemb Número de elementos dos dados.
+     * @param userp Ponteiro para a string que irá armazenar os dados. Deve ser um ponteiro para um objeto std::string.
+     *
+     * @return O tamanho total dos dados escritos.
+     *
+     * @note Essa função assume que o ponteiro userp é válido e aponta para um objeto std::string.
+     */
+    static size_t readCallback(void *contents, size_t size, size_t nmemb, void *userp)
+    {
+        ((std::string *)userp)->append((char *)contents, size * nmemb);
+
+        return size * nmemb;
+    }
 };
 
 /**
@@ -872,27 +901,6 @@ class HealthCheckServiceThread
 {
 public:
     /**
-     * @brief Função de callback para escrever dados recebidos do libcurl.
-     *
-     * Essa função é chamada pelo libcurl para escrever dados recebidos em uma string.
-     *
-     * @param contents Ponteiro para os dados recebidos.
-     * @param size Tamanho de cada elemento dos dados.
-     * @param nmemb Número de elementos dos dados.
-     * @param userp Ponteiro para a string que irá armazenar os dados. Deve ser um ponteiro para um objeto std::string.
-     *
-     * @return O tamanho total dos dados escritos.
-     *
-     * @note Essa função assume que o ponteiro userp é válido e aponta para um objeto std::string.
-     */
-    static size_t curlCallback(void *contents, size_t size, size_t nmemb, void *userp)
-    {
-        ((std::string *)userp)->append((char *)contents, size * nmemb);
-
-        return size * nmemb;
-    }
-
-    /**
      * @brief Executa o health check dos serviços.
      *
      * Esse método faz requests para os serviços "default" e "fallback" para verificar seu status.
@@ -917,7 +925,7 @@ public:
         {
             curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &defaultResponseBuffer);
 
             responseCode = curl_easy_perform(curl);
@@ -959,7 +967,7 @@ public:
                 SQLiteDatabaseUtils::closeConnection(database);
             }
 
-            curl_easy_cleanup(curl); // Clean up the easy handle
+            curl_easy_cleanup(curl);
         }
         //--
 
@@ -976,7 +984,7 @@ public:
         {
             curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curlCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fallbackResponseBuffer);
 
             responseCode = curl_easy_perform(curl);
@@ -1021,7 +1029,7 @@ public:
                 SQLiteDatabaseUtils::closeConnection(database);
             }
 
-            curl_easy_cleanup(curl); // Clean up the easy handle
+            curl_easy_cleanup(curl);
         }
     }
 
@@ -1198,8 +1206,7 @@ public:
     static bool insert(sqlite3 *database, const Payment &payment, bool defaultService, bool processed)
     {
         const char *sql = R"(
-            INSERT INTO payments (correlationId, amount, requestedAt, defaultService, processed)
-            VALUES (?, ?, ?, ?, ?);
+            INSERT INTO payments (correlationId, amount, requestedAt, defaultService, processed) VALUES (?, ?, ?, ?, ?);
         )";
 
         sqlite3_stmt *statement;
@@ -1275,7 +1282,7 @@ public:
 
         if (pos == string::npos)
         {
-            // Retornar um json de request invalida (faltou parametro 'amount')
+            // Retorna um json de request invalida (faltou parametro 'amount')
             responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
             responseMap["response"] = "{ \"message\":\"Invalid params. Missing 'amount'\" }";
 
@@ -1304,6 +1311,32 @@ public:
         if (useDefault)
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
+
+            // Montar payload em json
+            string payload = PaymentsJSONConverter::toJson(payment);
+
+            // Fazer a curl request para o servico default, lembrar o default timeout
+            // CURLcode responseCode;
+            // struct curl_slist *headers = NULL;
+            // CURL *curl = curl_easy_init();
+            // string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
+            // string defaultResponseBuffer;
+
+            // if (curl)
+            // {
+
+            //     curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+            //     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+            //     curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            //     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
+            //     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+            //     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
+
+            //     headers = curl_slist_append(headers, "Content-Type: application/json");
+            //     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+            //     curl_easy_cleanup(curl);
+            // }
         }
         else
         {
