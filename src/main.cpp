@@ -223,9 +223,9 @@ public:
     ~Timer()
     {
         auto end = chrono::high_resolution_clock::now();
-        auto duration_ms = chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        auto duration_us = chrono::duration_cast<std::chrono::microseconds>(end - start);
-        auto duration_ns = chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+        auto duration_ms = chrono::duration_cast<chrono::milliseconds>(end - start);
+        auto duration_us = chrono::duration_cast<chrono::microseconds>(end - start);
+        auto duration_ns = chrono::duration_cast<chrono::nanoseconds>(end - start);
 
         ostringstream stringBuilder;
 
@@ -379,17 +379,18 @@ private:
      */
     static string removeInvalidCharacters(const string &jsonString)
     {
-        string cleaned;
+        string validString;
 
         for (char character : jsonString)
         {
+            // caracteres imprimíveis ASCII
             if (character >= 32 && character <= 126)
-            { // caracteres imprimíveis ASCII
-                cleaned += character;
+            {
+                validString += character;
             }
         }
 
-        return cleaned;
+        return validString;
     }
 
     /**
@@ -472,12 +473,12 @@ public:
 
         stringBuilder << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
 
-        auto fracao_segundo = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
+        auto fraction_of_second = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
         stringBuilder << ".";
         stringBuilder << setfill('0');
         stringBuilder << setw(3);
-        stringBuilder << fracao_segundo.count();
+        stringBuilder << fraction_of_second.count();
         stringBuilder << "Z";
 
         return stringBuilder.str();
@@ -624,6 +625,7 @@ public:
      * verifica se os registros de health check para os serviços "default" e "fallback" estão criados,
      * e fecha a conexão com o banco de dados.
      *
+     * @param database Ponteiro para o objeto sqlite3.
      * @return true se a inicialização foi bem-sucedida, false caso contrário.
      *
      * @note A conexão com o banco de dados é fechada após a inicialização.
@@ -632,51 +634,27 @@ public:
      * @see SQLiteDatabaseUtils::getLastHealthCheck()
      * @see SQLiteDatabaseUtils::createHealthRecord()
      */
-    static bool init()
+    static bool init(sqlite3 *database)
     {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
 
         bool success = createHealthCkeckTable(database);
         LOGGER::info(success ? "Tabela do health check OK" : "Erro ao verificar tabela do health check");
 
-        // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-        SQLiteDatabaseUtils::closeConnection(database);
-        //--
-
-        return true;
+        return success;
     }
 
     /**
      * @brief Verifica o serviço 'default' está funcionando.
      *
-     *
+     * @param database Ponteiro para o objeto sqlite3.
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkDefault()
+    static bool checkDefault(sqlite3 *database)
     {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
 
         // Verifica se o servico "default" esta funcionando
         HealthCheck healthCheckDefault;
         healthCheckDefault = getLastHealthCheck(database, "default");
-
-        SQLiteDatabaseUtils::closeConnection(database);
 
         if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
         {
@@ -691,25 +669,14 @@ public:
     /**
      * @brief Verifica o serviço 'fallback' está funcionando.
      *
-     *
+     * @param database Ponteiro para o objeto sqlite3.
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkFallback()
+    static bool checkFallback(sqlite3 *database)
     {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-
-        if (database == nullptr)
-        {
-            LOGGER::error(string("SQLite3 error: ") + string(Constants::DATABASE_NAME));
-
-            return false;
-        }
 
         // Verifica se o servico "fallback" esta funcionando
         HealthCheck healthCheckFallBack = getLastHealthCheck(database, "fallback");
-
-        SQLiteDatabaseUtils::closeConnection(database);
 
         if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
         {
@@ -881,9 +848,10 @@ public:
     /**
      * @brief Executa o health check dos serviços.
      *
+     * @param database Ponteiro para o objeto sqlite3.
      * Esse método faz requests para os serviços "default" e "fallback" para verificar seu status.
      */
-    static void check()
+    static void check(sqlite3 *database)
     {
 
         CURLcode responseCode;
@@ -922,28 +890,20 @@ public:
                 map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
                 // Código que deve ser separado
-                sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+                HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck(database, "default");
 
-                if (database != nullptr)
+                if (healthCheckDefault.service.size() > 0)
                 {
-                    HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck(database, "default");
 
-                    if (healthCheckDefault.service.size() > 0)
-                    {
+                    healthCheckDefault.service = "default";
+                    healthCheckDefault.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
+                    healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
+                    healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
 
-                        healthCheckDefault.service = "default";
-                        healthCheckDefault.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
-                        healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
-                        healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
+                    HealthCheckUtils::updateHealthRecord(database, healthCheckDefault);
 
-                        HealthCheckUtils::updateHealthRecord(database, healthCheckDefault);
-
-                        LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
-                    }
+                    LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
                 }
-
-                // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-                SQLiteDatabaseUtils::closeConnection(database);
             }
 
             curl_easy_cleanup(curl);
@@ -982,31 +942,23 @@ public:
                 map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
                 // Código que deve ser separado
-                sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+                HealthCheck healthCheckFallBack = HealthCheckUtils::getLastHealthCheck(database, "fallback");
 
-                if (database != nullptr)
+                if (healthCheckFallBack.service.size() > 0)
                 {
-                    HealthCheck healthCheckFallBack = HealthCheckUtils::getLastHealthCheck(database, "fallback");
 
-                    if (healthCheckFallBack.service.size() > 0)
-                    {
+                    //	Faz a request para o servico
+                    LOGGER::info("Fazendo request de HealthCheck para a o serviço fallback");
 
-                        //	Faz a request para o servico
-                        LOGGER::info("Fazendo request de HealthCheck para a o serviço fallback");
+                    healthCheckFallBack.service = "fallback";
+                    healthCheckFallBack.failing = false;
+                    healthCheckFallBack.minResponseTime = 0;
+                    healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
 
-                        healthCheckFallBack.service = "fallback";
-                        healthCheckFallBack.failing = false;
-                        healthCheckFallBack.minResponseTime = 0;
-                        healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
+                    HealthCheckUtils::updateHealthRecord(database, healthCheckFallBack);
 
-                        HealthCheckUtils::updateHealthRecord(database, healthCheckFallBack);
-
-                        LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
-                    }
+                    LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
                 }
-
-                // Fechar a conexão fica a cargo da thread que rodara a cada 5 segundos
-                SQLiteDatabaseUtils::closeConnection(database);
             }
 
             curl_easy_cleanup(curl);
@@ -1025,6 +977,10 @@ public:
                {
                    while (true)
                    {
+                    /**
+                     * @todo Débito técnico: Pegar conexão de pool de conexões (thread safe) 
+                     * por que essa thread roda assincrona como uma cron
+                     */
                        check();
                        this_thread::sleep_for(chrono::seconds(5));
                    } })
@@ -1137,12 +1093,12 @@ public:
      *
      * Cria a tabela de pagamentos e o índice para a coluna correlationId se não existirem.
      *
+     * @param database Ponteiro para o objeto sqlite3.
+     *
      * @note Essa função deve ser chamada apenas uma vez durante a inicialização do sistema.
      */
-    static void init()
+    static void init(sqlite3 *database)
     {
-
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
 
         const char *SQL_QUERY = R"(
             CREATE TABLE IF NOT EXISTS payments (
@@ -1168,8 +1124,6 @@ public:
         {
             LOGGER::info("Tabela de pagamentos OK");
         }
-
-        SQLiteDatabaseUtils::closeConnection(database);
     }
 
     /**
@@ -1221,65 +1175,15 @@ public:
     }
 
     /**
-     * @brief Executa uma query no banco de dados e retorna o resultado.
-     *
-     * @param query A query a ser executada.
-     * @param bindParams Função que faz o bind dos parâmetros da query.
-     * @param extractResult Função que extrai o resultado da query.
-     * @return T O resultado da query.
-     */
-    template <typename T>
-    static T executeQuery(const string &query, function<void(sqlite3_stmt *)> bindParams, function<T(sqlite3_stmt *)> extractResult)
-    {
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
-        sqlite3_stmt *statement;
-        T result;
-
-        // Erro ao abrir a conexão
-        if (database == nullptr)
-        {
-            return -1;
-        }
-
-        // Preparar a query
-        int responseCode = sqlite3_prepare_v2(database, query.c_str(), -1, &statement, 0);
-
-        // Erro ao preparar a query
-        if (responseCode != SQLITE_OK)
-        {
-            SQLiteDatabaseUtils::closeConnection(database);
-
-            return -1;
-        }
-
-        // Bind dos parâmetros
-        bindParams(statement);
-
-        // Executa a query
-        responseCode = sqlite3_step(statement);
-        
-        if (responseCode == SQLITE_ROW)
-        {
-            result = extractResult(statement);
-        }
-
-        // Finaliza a query
-        sqlite3_finalize(statement);
-
-        SQLiteDatabaseUtils::closeConnection(database);
-
-        return result;
-    }
-
-    /**
      * @brief Calcula o total da coluna amount da tabela payments com base nos parâmetros fornecidos.
      *
+     * @param database Ponteiro para o objeto sqlite3.
      * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
      * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
      * @return double O total da coluna amount.
      */
-    static double getTotalAmount(bool defaultService, const string &to, const string &from)
+    static double getTotalAmount(sqlite3 *database, bool defaultService, const string &to, const string &from)
     {
         string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt BETWEEN ? AND ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
@@ -1295,18 +1199,19 @@ public:
             return sqlite3_column_double(statement, 0);
         };
 
-        return executeQuery<double>(SQL_QUERY, bindParams, extractResult);
+        return executeQuery<double>(database, SQL_QUERY, bindParams, extractResult);
     }
 
     /**
      * @brief Calcula o total de registros da tabela payments com base nos parâmetros fornecidos.
      *
+     * @param database Ponteiro para o objeto sqlite3.
      * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
      * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
      * @return int O total de registros.
      */
-    static int getTotalRecords(bool defaultService, const string &to, const string &from)
+    static int getTotalRecords(sqlite3 *database, bool defaultService, const string &to, const string &from)
     {
         string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt BETWEEN ? AND ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
@@ -1322,17 +1227,17 @@ public:
             return sqlite3_column_int(statement, 0);
         };
 
-        return executeQuery<int>(SQL_QUERY, bindParams, extractResult);
+        return executeQuery<int>(database, SQL_QUERY, bindParams, extractResult);
     }
 
     /**
      * @brief Deleta todos os registros da tabela payments.
      *
+     * @param database Ponteiro para o objeto sqlite3.
      * @return bool Indica se a operação foi bem-sucedida.
      */
-    static bool deleteAllPayments()
+    static bool deleteAllPayments(sqlite3 *database)
     {
-        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
         sqlite3_stmt *statement;
 
         // Erro ao abrir a conexão
@@ -1349,8 +1254,6 @@ public:
         // Erro ao preparar a query
         if (responseCode != SQLITE_OK)
         {
-            SQLiteDatabaseUtils::closeConnection(database);
-
             return false;
         }
 
@@ -1359,9 +1262,56 @@ public:
 
         // Finalizar a query e fechar a conexão
         sqlite3_finalize(statement);
-        SQLiteDatabaseUtils::closeConnection(database);
 
         return (responseCode == SQLITE_DONE);
+    }
+
+private:
+    /**
+     * @brief Executa uma query no banco de dados e retorna o resultado.
+     *
+     * @param database Ponteiro para o objeto sqlite3.
+     * @param query A query a ser executada.
+     * @param bindParams Função que faz o bind dos parâmetros da query.
+     * @param extractResult Função que extrai o resultado da query.
+     * @return T O resultado da query.
+     */
+    template <typename T>
+    static T executeQuery(sqlite3 *database, const string &query, function<void(sqlite3_stmt *)> bindParams, function<T(sqlite3_stmt *)> extractResult)
+    {
+        sqlite3_stmt *statement;
+        T result;
+
+        // Erro ao abrir a conexão
+        if (database == nullptr)
+        {
+            return -1;
+        }
+
+        // Preparar a query
+        int responseCode = sqlite3_prepare_v2(database, query.c_str(), -1, &statement, 0);
+
+        // Erro ao preparar a query
+        if (responseCode != SQLITE_OK)
+        {
+            return -1;
+        }
+
+        // Bind dos parâmetros
+        bindParams(statement);
+
+        // Executa a query
+        responseCode = sqlite3_step(statement);
+
+        if (responseCode == SQLITE_ROW)
+        {
+            result = extractResult(statement);
+        }
+
+        // Finaliza a query
+        sqlite3_finalize(statement);
+
+        return result;
     }
 };
 
