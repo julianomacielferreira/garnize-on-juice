@@ -653,7 +653,7 @@ public:
 
         if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
         {
-            LOGGER::info(string("HealthCkeck 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
+            LOGGER::info(string("Serviço 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
 
             return true;
         }
@@ -686,7 +686,7 @@ public:
 
         if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
         {
-            LOGGER::info(string("HealthCkeck 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
+            LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
 
             return true;
         }
