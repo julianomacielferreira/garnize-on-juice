@@ -277,6 +277,33 @@ public:
 
         return size * nmemb;
     }
+
+    /**
+     * @brief Retorna um ponteiro CURL para a URL com timeout de 7 segundos.
+     *
+     * @param URL O endereço que será chamado
+     * @param payload O payload da requisição em formato JSON.
+     * @param responseBuffer O buffer que armazenará a resposta da requisição.
+     * @return CURL * O objeto CURL que foi utilizado para fazer a requisição.
+     */
+    static CURL *setupCurlForPostRequest(const string &URL, const string &payload, string &responseBuffer)
+    {
+        CURL *curl = curl_easy_init();
+
+        if (curl)
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+            curl_easy_setopt(curl, CURLOPT_POST, 1L);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
+        }
+
+        return curl;
+    }
 };
 
 /**
@@ -1265,33 +1292,20 @@ public:
             /**
              * @todo Débito técnico, código duplicado
              */
-            // Monta o payload em json
-            string payload = PaymentsJSONConverter::toJson(payment);
-
             // Fazer a curl request para o servico default, lembrar o default timeout
-            CURLcode responseCode;
-            struct curl_slist *headers = NULL;
-            CURL *curl = curl_easy_init();
-            string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
+            string payload = PaymentsJSONConverter::toJson(payment);
             string defaultResponseBuffer;
-            long HTTP_RESPONSE_CODE = 0;
+            string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
+
+            CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, defaultResponseBuffer);
 
             if (curl)
             {
-
-                curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
-                curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-                curl_easy_setopt(curl, CURLOPT_POST, 1L);
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-                curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
-                curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
-                curl_easy_setopt(curl, CURLOPT_WRITEDATA, &defaultResponseBuffer);
-                curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
-
+                struct curl_slist *headers = NULL;
                 headers = curl_slist_append(headers, "Content-Type: application/json");
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-                responseCode = curl_easy_perform(curl);
+                CURLcode responseCode = curl_easy_perform(curl);
 
                 if (responseCode != CURLE_OK)
                 {
@@ -1299,7 +1313,7 @@ public:
                 }
                 else
                 {
-
+                    long HTTP_RESPONSE_CODE = 0;
                     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
 
                     LOGGER::info("Service /payments 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
@@ -1356,33 +1370,20 @@ public:
                 /**
                  * @todo Débito técnico, código duplicado
                  */
-                // Monta o payload em json
-                string payload = PaymentsJSONConverter::toJson(payment);
-
                 // Fazer a curl request para o servico default, lembrar o default timeout
-                CURLcode responseCode;
-                struct curl_slist *headers = NULL;
-                CURL *curl = curl_easy_init();
+                string payload = PaymentsJSONConverter::toJson(payment);
                 string URL = Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT;
                 string fallbackResponseBuffer;
-                long HTTP_RESPONSE_CODE = 0;
+                CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, fallbackResponseBuffer);
 
                 if (curl)
                 {
 
-                    curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
-                    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-                    curl_easy_setopt(curl, CURLOPT_POST, 1L);
-                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-                    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
-                    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
-                    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fallbackResponseBuffer);
-                    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
-
+                    struct curl_slist *headers = NULL;
                     headers = curl_slist_append(headers, "Content-Type: application/json");
                     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-                    responseCode = curl_easy_perform(curl);
+                    CURLcode responseCode = curl_easy_perform(curl);
 
                     if (responseCode != CURLE_OK)
                     {
@@ -1391,6 +1392,7 @@ public:
                     else
                     {
 
+                        long HTTP_RESPONSE_CODE = 0;
                         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
 
                         LOGGER::info("Service /payments 'fallback' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
