@@ -306,6 +306,28 @@ public:
 
         return curl;
     }
+
+    /**
+     * @brief Retorna um ponteiro CURL para a URL com timeout de 7 segundos.
+     *
+     * @param URL O endereço que será chamado
+     * @param responseBuffer O buffer que armazenará a resposta da requisição.
+     * @return CURL * O objeto CURL que foi utilizado para fazer a requisição.
+     */
+    static CURL *setupCurlForGetRequest(const string &URL, string &responseBuffer)
+    {
+        CURL *curl = curl_easy_init();
+
+        if (curl)
+        {
+            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+        }
+
+        return curl;
+    }
 };
 
 /**
@@ -374,7 +396,7 @@ private:
     /**
      * @brief Remove caracteres não imprimíveis da string JSON.
      *
-     * Essa função itera sobre a string JSON e remove todos os caracteres que não são imprimíveis ASCII (código entre 32 e 126).
+     * Essa função itera sobre a string JSON e remove todos os caracteres que não são imprimíveis ASCII.
      *
      * @param jsonString String JSON a ser limpa.
      * @return String JSON limpa, sem caracteres não imprimíveis.
@@ -385,7 +407,7 @@ private:
 
         for (char character : jsonString)
         {
-            // caracteres imprimíveis ASCII
+            // caracteres imprimíveis ASCII (código entre 32 e 126)
             if (character >= 32 && character <= 126)
             {
                 validString += character;
@@ -475,6 +497,14 @@ public:
 
         stringBuilder << put_time(&now_tm, "%Y-%m-%dT%H:%M:%S");
 
+        /**
+         * @brief Calcula a fração de segundo atual em milissegundos (0-999).
+         *
+         * @details
+         * Essa linha de código utiliza a classe `chrono` para calcular o tempo
+         * desde a época (epoch) até o momento atual, e então extrai a fração de
+         * segundo em milissegundos.
+         */
         auto fraction_of_second = chrono::duration_cast<chrono::milliseconds>(now.time_since_epoch()) % 1000;
 
         stringBuilder << ".";
@@ -505,8 +535,8 @@ public:
         uuid_t UUID;
         uuid_generate(UUID);
 
-        // Converte o UUID para uma string
         char UUIDString[37];
+        // Converte o UUID para uma string
         uuid_unparse(UUID, UUIDString);
 
         return UUIDString;
@@ -724,12 +754,35 @@ public:
     }
 
 private:
-    int maxConnections;                    ///< O número máximo de conexões que o pool pode manter.
-    int maxQueueSize;                      ///< O número máximo de threads que podem ser enfileiradas esperando por uma conexão.
-    queue<sqlite3 *> sqlite3Connections;   ///< A fila de conexões SQLite.
-    mutex mutexLock;                       ///< O mutex para sincronizar o acesso ao pool.
-    condition_variable conditionToProceed; ///< A variável de condição para notificar as threads que uma conexão está disponível.
-    int queueSize = 0;                     ///< O número atual de threads enfileiradas esperando por uma conexão.
+    /**
+     * @brief O número máximo de conexões que o pool pode manter.
+     */
+    int maxConnections;
+
+    /**
+     * @brief O número máximo de threads que podem ser enfileiradas esperando por uma conexão.
+     */
+    int maxQueueSize;
+
+    /**
+     * @brief A fila de conexões SQLite.
+     */
+    queue<sqlite3 *> sqlite3Connections;
+
+    /**
+     * @brief O mutex para sincronizar o acesso ao pool.
+     */
+    mutex mutexLock;
+
+    /**
+     * @brief A variável de condição para notificar as threads que uma conexão está disponível.
+     */
+    condition_variable conditionToProceed;
+
+    /**
+     * @brief O número atual de threads enfileiradas esperando por uma conexão.
+     */
+    int queueSize = 0;
 };
 
 /**
@@ -743,18 +796,12 @@ public:
     /**
      * @brief Inicializa o health check dos serviços de pagamentos.
      *
-     * Esse método abre uma conexão com o banco de dados, cria a tabela de health check se necessário,
-     * verifica se os registros de health check para os serviços "default" e "fallback" estão criados,
-     * e fecha a conexão com o banco de dados.
+     * Esse método cria a tabela de health check se necessário,
+     * verifica se os registros de health check para os serviços "default" e "fallback" estão criados.
      *
      * @param database Ponteiro para o objeto sqlite3.
-     * @return true se a inicialização foi bem-sucedida, false caso contrário.
      *
-     * @note A conexão com o banco de dados é fechada após a inicialização.
-     * @see SQLiteDatabaseUtils::openConnection()
-     * @see SQLiteDatabaseUtils::createHealthCkeckTable()
-     * @see SQLiteDatabaseUtils::getLastHealthCheck()
-     * @see SQLiteDatabaseUtils::createHealthRecord()
+     * @return true se a inicialização foi bem-sucedida, false caso contrário.
      */
     static bool init(sqlite3 *database)
     {
@@ -855,8 +902,8 @@ public:
     static bool updateHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
     {
         const char *SQL_QUERY = R"(
-        UPDATE service_health_check SET service = ?, failing = ?, minResponseTime = ?, lastCheck = ? WHERE service = ?;
-    )";
+            UPDATE service_health_check SET service = ?, failing = ?, minResponseTime = ?, lastCheck = ? WHERE service = ?;
+        )";
 
         sqlite3_stmt *statement;
 
@@ -880,15 +927,11 @@ public:
         if (response != SQLITE_DONE)
         {
             LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
-
-            sqlite3_finalize(statement);
-
-            return false;
         }
 
         sqlite3_finalize(statement);
 
-        return true;
+        return (response == SQLITE_DONE);
     }
 
     /**
@@ -900,7 +943,7 @@ public:
      */
     static HealthCheck getLastHealthCheck(sqlite3 *database, const string &service)
     {
-        const char *sql = R"(
+        const char *SQL_QUERY = R"(
             SELECT service, 
                    failing, 
                    minResponseTime, 
@@ -913,7 +956,7 @@ public:
 
         sqlite3_stmt *statement;
 
-        int response = sqlite3_prepare_v2(database, sql, -1, &statement, nullptr);
+        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
 
         HealthCheck healthCheck;
 
@@ -934,28 +977,19 @@ public:
             healthCheck.failing = sqlite3_column_int(statement, 1);
             healthCheck.minResponseTime = sqlite3_column_int(statement, 2);
             healthCheck.lastCheck = reinterpret_cast<const char *>(sqlite3_column_text(statement, 3));
-
-            sqlite3_finalize(statement);
-
-            return healthCheck;
         }
         else if (response == SQLITE_DONE)
         {
-
-            LOGGER::info("Nenhum registro encontrado");
-
-            sqlite3_finalize(statement);
-
-            return healthCheck;
+            LOGGER::info("Nenhum registro de service_health_check encontrado");
         }
         else
         {
             LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
-
-            sqlite3_finalize(statement);
-
-            return healthCheck;
         }
+
+        sqlite3_finalize(statement);
+
+        return healthCheck;
     }
 };
 
@@ -976,42 +1010,30 @@ public:
     static void check(sqlite3 *database)
     {
 
-        CURLcode responseCode;
-        CURL *curl;
-        string URL;
-
-        /**
-         * @todo Débito técnico: Refatorar esse código em um método específico
-         */
-        //	Faz a request para o servico
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'default'");
-        curl = curl_easy_init();
-        URL = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
+
+        CURLcode responseCodeDefault;
+        string URL_DEFAULT = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
         string defaultResponseBuffer;
 
-        if (curl)
+        CURL *curl_default = CURLUtils::setupCurlForGetRequest(URL_DEFAULT, defaultResponseBuffer);
+
+        if (curl_default)
         {
-            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
-            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &defaultResponseBuffer);
+            responseCodeDefault = curl_easy_perform(curl_default);
 
-            responseCode = curl_easy_perform(curl);
-
-            if (responseCode != CURLE_OK)
+            if (responseCodeDefault != CURLE_OK)
             {
-                LOGGER::error(string("Erro ao fazer curl request para o serviço 'default': ") + string(curl_easy_strerror(responseCode)));
+                LOGGER::error(string("Erro ao fazer curl request para o serviço 'default': ") + string(curl_easy_strerror(responseCodeDefault)));
             }
             else
             {
-
                 LOGGER::info(string("Dados recebidos: ") + string(defaultResponseBuffer));
                 LOGGER::info("Atualizando na base o registro do serviço 'default'");
 
                 map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
-                // Código que deve ser separado
                 HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck(database, "default");
 
                 if (healthCheckDefault.service.size() > 0)
@@ -1028,32 +1050,25 @@ public:
                 }
             }
 
-            curl_easy_cleanup(curl);
+            curl_easy_cleanup(curl_default);
         }
-        //--
 
-        /**
-         * @todo Débito técnico: Refatorar esse código em um método específico
-         */
-        //	Faz a request para o servico
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
-        curl = curl_easy_init();
-        URL = Constants::PROCESSOR_FALLBACK + Constants::HEALTH_CHECK_ENDPOINT;
+
+        CURLcode responseCodeFallback;
+        string URL_FALLBACK = Constants::PROCESSOR_FALLBACK + Constants::HEALTH_CHECK_ENDPOINT;
         string fallbackResponseBuffer;
 
-        if (curl)
+        CURL *curl_fallback = CURLUtils::setupCurlForGetRequest(URL_FALLBACK, fallbackResponseBuffer);
+
+        if (curl_fallback)
         {
-            curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
-            curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
-            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
-            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fallbackResponseBuffer);
+            responseCodeFallback = curl_easy_perform(curl_fallback);
 
-            responseCode = curl_easy_perform(curl);
-
-            if (responseCode != CURLE_OK)
+            if (responseCodeFallback != CURLE_OK)
             {
-                LOGGER::error(string("Erro ao fazer curl request para o serviço 'fallback': ") + string(curl_easy_strerror(responseCode)));
+                LOGGER::error(string("Erro ao fazer curl request para o serviço 'fallback': ") + string(curl_easy_strerror(responseCodeFallback)));
             }
             else
             {
@@ -1063,27 +1078,23 @@ public:
 
                 map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
-                // Código que deve ser separado
-                HealthCheck healthCheckFallBack = HealthCheckUtils::getLastHealthCheck(database, "fallback");
+                HealthCheck healthCheckFallback = HealthCheckUtils::getLastHealthCheck(database, "fallback");
 
-                if (healthCheckFallBack.service.size() > 0)
+                if (healthCheckFallback.service.size() > 0)
                 {
 
-                    //	Faz a request para o servico
-                    LOGGER::info("Fazendo request de HealthCheck para a o serviço fallback");
+                    healthCheckFallback.service = "fallback";
+                    healthCheckFallback.failing = false;
+                    healthCheckFallback.minResponseTime = 0;
+                    healthCheckFallback.lastCheck = TimeUtils::getTimestampUTC();
 
-                    healthCheckFallBack.service = "fallback";
-                    healthCheckFallBack.failing = false;
-                    healthCheckFallBack.minResponseTime = 0;
-                    healthCheckFallBack.lastCheck = TimeUtils::getTimestampUTC();
+                    HealthCheckUtils::updateHealthRecord(database, healthCheckFallback);
 
-                    HealthCheckUtils::updateHealthRecord(database, healthCheckFallBack);
-
-                    LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallBack.lastCheck));
+                    LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallback.lastCheck));
                 }
             }
 
-            curl_easy_cleanup(curl);
+            curl_easy_cleanup(curl_fallback);
         }
     }
 
@@ -1098,12 +1109,13 @@ public:
         thread([&connectionPoolUtils]()
                {
                    while (true)
-                   {
-                    /**
-                     * @todo Débito técnico: Pegar conexão de pool de conexões (thread safe) 
-                     * por que essa thread roda assincrona como uma cron
-                     */
+                   {                    
                        sqlite3* database = connectionPoolUtils.getConnectionFromPool();
+
+                       if(database == nullptr) {
+                        continue;
+                       }
+
                        check(database);
                        connectionPoolUtils.returnConnectionToPool(database);
                        this_thread::sleep_for(chrono::seconds(5));
@@ -1952,7 +1964,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPool(100, 5000);
+    SQLiteConnectionPoolUtils connectionPool(10, 5000);
     sqlite3 *database = connectionPool.getConnectionFromPool();
 
     LOGGER::info("Verificando tabelas no banco de dados");
