@@ -18,6 +18,8 @@ COPY . /app
 # -Wall: Este parâmetro ativa todos os avisos de compilação que são considerados úteis e fáceis de corrigir.
 # -Wextra: Este parâmetro ativa avisos adicionais que não são incluídos pelo -Wall.
 # -lsqlite3: Este parâmetro diz ao compilador para incluir a biblioteca sqlite3
+# -lcurl: Este parâmetro diz ao compilador para incluir a biblioteca libcurl4-openssl-dev
+# -luuid: Este parâmetro diz ao compilador para incluir a biblioteca uuid-dev
 # -O2: Este parâmetro controla o nível de otimização do compilador.
 #      O -O2 é um nível de otimização moderado que equilibra a velocidade de execução do programa com o tempo de compilação.
 RUN g++ src/main.cpp -std=c++17 -Wall -Wextra -O2 -o garnize_on_juice -lsqlite3 -lcurl -luuid

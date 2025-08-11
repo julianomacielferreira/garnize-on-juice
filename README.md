@@ -223,11 +223,7 @@ $ curl --location --request GET 'http://localhost:9999/payments-summary?from=202
 
 ```bash
 $ curl --location --request POST 'http://localhost:9999/purge-payments' \
---header 'Content-Type: application/json' \
---data '{
-        "correlationId": "4a7901b8-7d26-4d9d-aa19-4dc1c7cf60b3",
-        "amount": 19.90
-    }'
+--header 'Content-Type: application/json'
 ```
 
 <details>
@@ -235,7 +231,8 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 ```json
 {
-  "message": "database purged"
+    "message": "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.",
+    "success": true
 }
 ```
 

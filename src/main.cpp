@@ -1257,7 +1257,7 @@ public:
 
         // Executa a query
         responseCode = sqlite3_step(statement);
-
+        
         if (responseCode == SQLITE_ROW)
         {
             result = extractResult(statement);
@@ -1361,7 +1361,7 @@ public:
         sqlite3_finalize(statement);
         SQLiteDatabaseUtils::closeConnection(database);
 
-        return (responseCode != SQLITE_DONE);
+        return (responseCode == SQLITE_DONE);
     }
 };
 

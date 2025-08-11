@@ -10,7 +10,7 @@ services:
       resources:
         limits:
           cpus: "0.15"
-          memory: "100MB"
+          memory: "350MB"
 
 networks:
   payment-processor:
