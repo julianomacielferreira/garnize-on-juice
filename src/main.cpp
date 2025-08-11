@@ -30,7 +30,9 @@
 #include <vector>
 #include <regex>
 #include <thread>
-#include <random>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <curl/curl.h>
@@ -611,6 +613,123 @@ public:
 };
 
 /**
+ * @class SQLiteConnectionPoolUtils
+ * @brief Gerencia um pool de conexões SQLite para melhorar o desempenho em ambientes de alta concorrência.
+ *
+ * Essa classe fornece uma implementação de pool de conexões SQLite que permite que múltiplas threads compartilhem conexões de forma segura e eficiente.
+ *
+ * @param max_connections O número máximo de conexões que o pool pode manter.
+ * @param max_queue_size O número máximo de threads que podem ser enfileiradas esperando por uma conexão.
+ */
+class SQLiteConnectionPoolUtils
+{
+public:
+    /**
+     * @brief Constrói um objeto SQLiteConnectionPoolUtils.
+     *
+     * Inicializa o pool de conexões com o número máximo de conexões especificado.
+     *
+     * @param max_connections O número máximo de conexões que o pool pode manter.
+     * @param max_queue_size O número máximo de threads que podem ser enfileiradas esperando por uma conexão.
+     */
+    SQLiteConnectionPoolUtils(int max_connections, int max_queue_size) : maxConnections(max_connections), maxQueueSize(max_queue_size)
+    {
+        for (int i = 0; i < maxConnections; i++)
+        {
+            sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
+
+            if (connect == nullptr)
+            {
+
+                LOGGER::error("Erro ao criar pool de conexões");
+
+                return;
+            }
+
+            sqlite3Connections.push(connection);
+        }
+    }
+
+    /**
+     * @brief Obtém uma conexão do pool.
+     *
+     * Se o pool estiver vazio e o número de threads enfileiradas for menor que o máximo permitido, uma nova conexão é criada.
+     * Se o pool estiver vazio é bloqueada até que uma conexão fique disponível.
+     *
+     * @return Uma conexão SQLite válida ou nullptr em caso de erro.
+     */
+    sqlite3 *getConnectionFromPool()
+    {
+
+        unique_lock<mutex> lock(mutexLock);
+
+        while (sqlite3Connections.empty() && queueSize >= maxQueueSize)
+        {
+            conditionToProceed.wait(lock);
+        }
+
+        if (sqlite3Connections.empty())
+        {
+            sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
+
+            if (connect == nullptr)
+            {
+
+                LOGGER::error("Erro ao criar conexão para o poool");
+
+                return nullptr;
+            }
+
+            sqlite3Connections.push(connection);
+        }
+
+        sqlite3 *connection = sqlite3Connections.front();
+        sqlite3Connections.pop();
+        queueSize++;
+
+        return connection;
+    }
+
+    /**
+     * @brief Retorna uma conexão ao pool.
+     *
+     * A conexão é devolvida ao pool e a thread que estava esperando por uma conexão é notificada.
+     *
+     * @param connection A conexão a ser devolvida ao pool.
+     */
+    void returnConnectionToPool(sqlite3 *connection)
+    {
+        lock_guard<mutex> lock(mutexLock);
+        sqlite3Connections.push(connection);
+        queueSize--;
+        conditionToProceed.notify_one();
+    }
+
+    /**
+     * @brief Destroi o objeto SQLiteConnectionPoolUtils.
+     *
+     * Fecha todas as conexões do pool.
+     */
+    ~SQLiteConnectionPoolUtils()
+    {
+        while (!sqlite3Connections.empty())
+        {
+            sqlite3 *connection = sqlite3Connections.front();
+            sqlite3Connections.pop();
+            SQLiteDatabaseUtils::closeConnection(connection);
+        }
+    }
+
+private:
+    int maxConnections;                    ///< O número máximo de conexões que o pool pode manter.
+    int maxQueueSize;                      ///< O número máximo de threads que podem ser enfileiradas esperando por uma conexão.
+    queue<sqlite3 *> sqlite3Connections;   ///< A fila de conexões SQLite.
+    mutex mutexLock;                       ///< O mutex para sincronizar o acesso ao pool.
+    condition_variable conditionToProceed; ///< A variável de condição para notificar as threads que uma conexão está disponível.
+    int queueSize = 0;                     ///< O número atual de threads enfileiradas esperando por uma conexão.
+};
+
+/**
  * @brief Classe utilitária para gerenciamento de health check.
  *
  * Essa classe fornece métodos estáticos para inicializar e verificar o health check dos serviços de pagamentos.
@@ -971,9 +1090,9 @@ public:
      * Esse método cria uma thread que executa o método `check()` a cada 5 segundos.
      * @note A thread é executada em um loop infinito, portanto é necessário ter um mecanismo para interromper a thread se necessário.
      */
-    static void init()
+    static void init(SQLiteConnectionPoolUtils &connectionPoolUtils)
     {
-        thread([]()
+        thread([&connectionPoolUtils]()
                {
                    while (true)
                    {
@@ -981,7 +1100,9 @@ public:
                      * @todo Débito técnico: Pegar conexão de pool de conexões (thread safe) 
                      * por que essa thread roda assincrona como uma cron
                      */
-                       check();
+                       sqlite3* database = connectionPoolUtils.getConnectionFromPool();
+                       check(database);
+                       connectionPoolUtils.returnConnectionToPool(database);
                        this_thread::sleep_for(chrono::seconds(5));
                    } })
             .detach();
@@ -1331,9 +1452,10 @@ public:
      * cria um pagamento e o armazena no mapa de pagamentos.
      *
      * @param body Corpo da requisição.
+     * @param database Ponteiro para o objeto sqlite3.
      * @return Resposta HTTP.
      */
-    static map<string, string> payment(const string &body)
+    static map<string, string> payment(const string &body, sqlite3 *database)
     {
         Timer timer;
 
@@ -1377,7 +1499,7 @@ public:
 
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
-        bool useDefaultService = HealthCheckUtils::checkDefault();
+        bool useDefaultService = HealthCheckUtils::checkDefault(database);
 
         if (useDefaultService)
         {
@@ -1416,31 +1538,24 @@ public:
                          */
                         map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
-                        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+                        // Inserir o registro de payments processado pelo payments default
+                        stringstream stringBuilder;
+                        stringBuilder << "Inserindo Payment(correlationId=";
+                        stringBuilder << payment.correlationId;
+                        stringBuilder << ", amount=";
+                        stringBuilder << to_string(payment.amount);
+                        stringBuilder << ", requestedAt=";
+                        stringBuilder << payment.requestedAt;
+                        stringBuilder << ", defaultService=true, processed=";
+                        stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
+                        stringBuilder << ")";
 
-                        if (database != nullptr)
-                        {
-                            // Inserir o registro de payments processado pelo payments default
-                            stringstream stringBuilder;
-                            stringBuilder << "Inserindo Payment(correlationId=";
-                            stringBuilder << payment.correlationId;
-                            stringBuilder << ", amount=";
-                            stringBuilder << to_string(payment.amount);
-                            stringBuilder << ", requestedAt=";
-                            stringBuilder << payment.requestedAt;
-                            stringBuilder << ", defaultService=true, processed=";
-                            stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
-                            stringBuilder << ")";
+                        LOGGER::info(stringBuilder.str());
 
-                            LOGGER::info(stringBuilder.str());
+                        PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
 
-                            PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
-
-                            SQLiteDatabaseUtils::closeConnection(database);
-
-                            responseMap["status"] = Constants::CREATED_RESPONSE;
-                            responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
-                        }
+                        responseMap["status"] = Constants::CREATED_RESPONSE;
+                        responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
                     }
                     else
                     {
@@ -1455,7 +1570,7 @@ public:
         }
         else
         {
-            bool useFallbackService = HealthCheckUtils::checkFallback();
+            bool useFallbackService = HealthCheckUtils::checkFallback(database);
 
             if (useFallbackService)
             {
@@ -1495,31 +1610,24 @@ public:
                              */
                             map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
-                            sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+                            // Inserir o registro de payments processado pelo payments default
+                            stringstream stringBuilder;
+                            stringBuilder << "Inserindo Payment(correlationId=";
+                            stringBuilder << payment.correlationId;
+                            stringBuilder << ", amount=";
+                            stringBuilder << to_string(payment.amount);
+                            stringBuilder << ", requestedAt=";
+                            stringBuilder << payment.requestedAt;
+                            stringBuilder << ", defaultService=false, processed="; // Unica coisa eu muda do default
+                            stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
+                            stringBuilder << ")";
 
-                            if (database != nullptr)
-                            {
-                                // Inserir o registro de payments processado pelo payments default
-                                stringstream stringBuilder;
-                                stringBuilder << "Inserindo Payment(correlationId=";
-                                stringBuilder << payment.correlationId;
-                                stringBuilder << ", amount=";
-                                stringBuilder << to_string(payment.amount);
-                                stringBuilder << ", requestedAt=";
-                                stringBuilder << payment.requestedAt;
-                                stringBuilder << ", defaultService=false, processed="; // Unica coisa eu muda do default
-                                stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
-                                stringBuilder << ")";
+                            LOGGER::info(stringBuilder.str());
 
-                                LOGGER::info(stringBuilder.str());
+                            PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
 
-                                PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
-
-                                SQLiteDatabaseUtils::closeConnection(database);
-
-                                responseMap["status"] = Constants::CREATED_RESPONSE;
-                                responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
-                            }
+                            responseMap["status"] = Constants::CREATED_RESPONSE;
+                            responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
                         }
                         else
                         {
@@ -1553,9 +1661,11 @@ public:
      * no período especificado e retorna a resposta.
      *
      * @param query Query string da requisição.
+     * @param database Ponteiro para o objeto sqlite3.
+     *
      * @return Um mapa contendo o código e a resposta.
      */
-    static map<string, string> paymentSummary(const string &query)
+    static map<string, string> paymentSummary(const string &query, sqlite3 *database)
     {
         Timer timer;
 
@@ -1592,10 +1702,10 @@ public:
          */
         // Calcula o total de pagamentos no período com a o banco de dados
         PaymentsSummary paymentSummary;
-        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(true, to, from);
-        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(true, to, from);
-        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(false, to, from);
-        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(false, to, from);
+        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, to, from);
+        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, to, from);
+        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, to, from);
+        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, to, from);
 
         // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
@@ -1621,6 +1731,7 @@ public:
      * e então processa a requisição de acordo com o método e o caminho.
      *
      * @param socket O socket que recebeu a requisição.
+     * @param connectionPoolUtils Classe utilitária que gerencia as conexões
      *
      * @details
      * A função segue os seguintes passos:
@@ -1634,7 +1745,7 @@ public:
      * A função assume que o socket é válido e que a requisição é bem-formada.
      * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
      */
-    static void handleWith(int socket)
+    static void handleWith(int socket, SQLiteConnectionPoolUtils &connectionPoolUtils)
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
@@ -1681,7 +1792,7 @@ public:
             if (bodyPos != string::npos)
             {
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentsProcessor::payment(body);
+                map<string, string> response = PaymentsProcessor::payment(body, connectionPoolUtils.getConnectionFromPool());
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1705,7 +1816,7 @@ public:
             if (queryPos != string::npos)
             {
                 string query = path.substr(queryPos + 1);
-                map<string, string> response = PaymentsProcessor::paymentSummary(query);
+                map<string, string> response = PaymentsProcessor::paymentSummary(query, connectionPoolUtils.getConnectionFromPool());
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1724,7 +1835,7 @@ public:
             cout << endl;
             LOGGER::info("POST request para /purge-payments");
 
-            bool success = PaymentsUtils::deleteAllPayments();
+            bool success = PaymentsUtils::deleteAllPayments(connectionPoolUtils.getConnectionFromPool());
 
             string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
 
@@ -1833,16 +1944,19 @@ int main()
         return EXIT_FAILURE;
     };
 
+    SQLiteConnectionPoolUtils connectionPool(100, 2000);
+    sqlite3 *database = connectionPool.getConnectionFromPool();
+
     LOGGER::info("Verificando tabelas no banco de dados");
-    HealthCheckUtils::init();
-    PaymentsUtils::init();
+    HealthCheckUtils::init(database);
+    PaymentsUtils::init(database);
 
     /**
      * @todo Serviço de health check, uma única thread que ficará
      * rodando a cada 5 segundos batendo no endpoint e salvando o resultado
      */
     LOGGER::info("Inicializando serviço de Health Check");
-    HealthCheckServiceThread::init();
+    HealthCheckServiceThread::init(connectionPool);
 
     cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
@@ -1857,8 +1971,9 @@ int main()
             continue;
         }
 
-        thread thread(RequestHandler::handleWith, new_socket);
-        thread.detach();
+        thread([new_socket, &connectionPool]()
+               { RequestHandler::handleWith(new_socket, connectionPool); })
+            .detach();
     }
 
     return EXIT_SUCCESS;
