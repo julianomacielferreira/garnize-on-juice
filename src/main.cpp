@@ -638,15 +638,15 @@ public:
         {
             sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
 
-            if (connect == nullptr)
+            if (connection != nullptr)
             {
-
+                sqlite3Connections.push(connection);
+            }
+            else
+            {
                 LOGGER::error("Erro ao criar pool de conexões");
-
                 return;
             }
-
-            sqlite3Connections.push(connection);
         }
     }
 
@@ -672,7 +672,7 @@ public:
         {
             sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
 
-            if (connect == nullptr)
+            if (connection == nullptr)
             {
 
                 LOGGER::error("Erro ao criar conexão para o poool");
@@ -700,8 +700,11 @@ public:
     void returnConnectionToPool(sqlite3 *connection)
     {
         lock_guard<mutex> lock(mutexLock);
+
         sqlite3Connections.push(connection);
+
         queueSize--;
+
         conditionToProceed.notify_one();
     }
 
