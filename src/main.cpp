@@ -1546,20 +1546,13 @@ public:
             else
             {
 
+                /**
+                 * @todo Implementar uma lógica para tratar esse cenário
+                 */
                 LOGGER::info("ALERTA!!! Nenhum serviço está funcionando, tanto o 'default' quanto o 'fallback'");
                 LOGGER::info("Salvar o payment em alguma estrura e reprocessar após 5 segundos");
             }
         }
-
-        /**
-         * 1) @todo Já chamou a 5 segundos o GET /payments/service-health (quanto está demorando pra responder os endpoints default e fallback ?)
-         * 2) @todo Este endpoint impõe um limite de chamadas – 1 chamada a cada 5 segundos
-         * 3) @todo Salvar o resultado em alguma estrutura de dados que possa ser compartilhada pelas threads
-         * 4) @todo Se este limite for ultrapassado, você receberá uma resposta de erro do tipo HTTP 429 - Too Many Requests.
-         * 5) @todo decidir como o algoritmo vai fazer as requests para o default ou o fallback
-         * 6) @todo Salvar os pagamentos que deram certo para retornar pelo paymemts summary (GET)
-         * 7) @todo Lembrar: endpoint paymemts summary (GET) precisa retornar um resumo do que já foi processado em termos de pagamentos.
-         */
 
         return responseMap;
     }
