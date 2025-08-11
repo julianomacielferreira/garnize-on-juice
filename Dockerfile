@@ -1,12 +1,13 @@
 FROM alpine:latest
 
 # Instala as dependências necessárias
-RUN apk update && apk add --no-cache \
+RUN apk update && \
+    apk add --no-cache \
     alpine-sdk \
     g++ \
+    util-linux-dev \
     sqlite-dev \
     curl-dev \
-    libuuid-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copia o código-fonte para o contêiner
