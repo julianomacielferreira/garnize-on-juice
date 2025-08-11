@@ -1245,7 +1245,6 @@ public:
         // Parse do corpo da requisição
         map<string, string> json = JsonParser::parseJson(body);
 
-        // Cria o payload
         Payment payment;
         /**
          * @todo Descomentar linha abaixo pois o valor vai ser enviado na request
@@ -1263,7 +1262,10 @@ public:
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
 
-            // Montar payload em json
+            /**
+             * @todo Débito técnico, código duplicado
+             */
+            // Monta o payload em json
             string payload = PaymentsJSONConverter::toJson(payment);
 
             // Fazer a curl request para o servico default, lembrar o default timeout
@@ -1293,14 +1295,14 @@ public:
 
                 if (responseCode != CURLE_OK)
                 {
-                    LOGGER::error(string("Erro ao fazer curl request para payments 'default': ") + string(curl_easy_strerror(responseCode)));
+                    LOGGER::error(string("Erro ao fazer curl request para /payments 'default': ") + string(curl_easy_strerror(responseCode)));
                 }
                 else
                 {
 
                     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
 
-                    LOGGER::info("Serviço 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
+                    LOGGER::info("Service /payments 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
 
                     if (HTTP_RESPONSE_CODE == 200)
                     {
@@ -1350,6 +1352,95 @@ public:
             if (useFallbackService)
             {
                 LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
+
+                /**
+                 * @todo Débito técnico, código duplicado
+                 */
+                // Monta o payload em json
+                string payload = PaymentsJSONConverter::toJson(payment);
+
+                // Fazer a curl request para o servico default, lembrar o default timeout
+                CURLcode responseCode;
+                struct curl_slist *headers = NULL;
+                CURL *curl = curl_easy_init();
+                string URL = Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT;
+                string fallbackResponseBuffer;
+                long HTTP_RESPONSE_CODE = 0;
+
+                if (curl)
+                {
+
+                    curl_easy_setopt(curl, CURLOPT_URL, URL.c_str());
+                    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
+                    curl_easy_setopt(curl, CURLOPT_POST, 1L);
+                    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+                    curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
+                    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
+                    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &fallbackResponseBuffer);
+                    curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
+
+                    headers = curl_slist_append(headers, "Content-Type: application/json");
+                    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+                    responseCode = curl_easy_perform(curl);
+
+                    if (responseCode != CURLE_OK)
+                    {
+                        LOGGER::error(string("Erro ao fazer curl request para /payments 'fallback': ") + string(curl_easy_strerror(responseCode)));
+                    }
+                    else
+                    {
+
+                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
+
+                        LOGGER::info("Service /payments 'fallback' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
+
+                        if (HTTP_RESPONSE_CODE == 200)
+                        {
+                            map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
+
+                            sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+
+                            if (database != nullptr)
+                            {
+                                // Inserir o registro de payments processado pelo payments default
+                                stringstream stringBuilder;
+                                stringBuilder << "Inserindo Payment(correlationId=";
+                                stringBuilder << payment.correlationId;
+                                stringBuilder << ", amount=";
+                                stringBuilder << to_string(payment.amount);
+                                stringBuilder << ", requestedAt=";
+                                stringBuilder << payment.requestedAt;
+                                stringBuilder << ", defaultService=false, processed=";
+                                stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
+                                stringBuilder << ")";
+
+                                LOGGER::info(stringBuilder.str());
+
+                                PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
+
+                                SQLiteDatabaseUtils::closeConnection(database);
+
+                                responseMap["status"] = Constants::CREATED_RESPONSE;
+                                responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
+                            }
+                        }
+                        else
+                        {
+                            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
+                            responseMap["response"] = "Erro na request payload: " + payload;
+                        }
+                    }
+
+                    curl_easy_cleanup(curl);
+                    curl_slist_free_all(headers);
+                }
+            }
+            else
+            {
+
+                LOGGER::info("ALERTA!!! Nenhum serviço está funcionando, tanto o 'default' quanto o 'fallback'");
+                LOGGER::info("Salvar o payment em alguma estrura e reprocessar após 5 segundos");
             }
         }
 
