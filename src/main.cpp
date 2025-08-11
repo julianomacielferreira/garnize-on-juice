@@ -1324,6 +1324,45 @@ public:
 
         return executeQuery<int>(SQL_QUERY, bindParams, extractResult);
     }
+
+    /**
+     * @brief Deleta todos os registros da tabela payments.
+     *
+     * @return bool Indica se a operação foi bem-sucedida.
+     */
+    static bool deleteAllPayments()
+    {
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+        sqlite3_stmt *statement;
+
+        // Erro ao abrir a conexão
+        if (database == nullptr)
+        {
+            return false;
+        }
+
+        // Preparar a query
+        const char *SQL_QUERY = "DELETE FROM payments";
+
+        int responseCode = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, 0);
+
+        // Erro ao preparar a query
+        if (responseCode != SQLITE_OK)
+        {
+            SQLiteDatabaseUtils::closeConnection(database);
+
+            return false;
+        }
+
+        // Executa a query
+        responseCode = sqlite3_step(statement);
+
+        // Finalizar a query e fechar a conexão
+        sqlite3_finalize(statement);
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        return (responseCode != SQLITE_DONE);
+    }
 };
 
 /**
@@ -1735,6 +1774,8 @@ public:
             cout << endl;
             LOGGER::info("POST request para /purge-payments");
 
+            bool success = PaymentsUtils::deleteAllPayments();
+
             string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
 
             LOGGER::info(msg);
@@ -1745,7 +1786,7 @@ public:
              */
             map<string, string> response = {
                 {"status", Constants::OK_RESPONSE},
-                {"response", "{ \"message\": \"" + msg + "\", \"success\": true}"}};
+                {"response", "{ \"message\": \"" + msg + "\", \"success\": " + (success ? "true" : "false") + "}"}};
 
             string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
             send(socket, headers.c_str(), headers.size(), 0);
