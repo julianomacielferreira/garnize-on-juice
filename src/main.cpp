@@ -1320,11 +1320,11 @@ public:
      *
      * @param database Ponteiro para o objeto sqlite3.
      * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
-     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
+     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @return double O total da coluna amount.
      */
-    static double getTotalAmount(sqlite3 *database, bool defaultService, const string &to, const string &from)
+    static double getTotalAmount(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
         string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
@@ -1348,11 +1348,11 @@ public:
      *
      * @param database Ponteiro para o objeto sqlite3.
      * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
-     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
+     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
      * @return int O total de registros.
      */
-    static int getTotalRecords(sqlite3 *database, bool defaultService, const string &to, const string &from)
+    static int getTotalRecords(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
         string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
@@ -1727,10 +1727,10 @@ public:
          */
         // Calcula o total de pagamentos no período com a o banco de dados
         PaymentsSummary paymentSummary;
-        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, to, from);
-        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, to, from);
-        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, to, from);
-        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, to, from);
+        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, from, to);
+        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, from, to);
+        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, from, to);
+        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, from, to);
 
         // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
