@@ -1309,7 +1309,7 @@ public:
      */
     static double getTotalAmount(sqlite3 *database, bool defaultService, const string &to, const string &from)
     {
-        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt BETWEEN ? AND ?";
+        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -1337,7 +1337,7 @@ public:
      */
     static int getTotalRecords(sqlite3 *database, bool defaultService, const string &to, const string &from)
     {
-        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt BETWEEN ? AND ?";
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -1952,7 +1952,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPool(100, 2000);
+    SQLiteConnectionPoolUtils connectionPool(100, 5000);
     sqlite3 *database = connectionPool.getConnectionFromPool();
 
     LOGGER::info("Verificando tabelas no banco de dados");
