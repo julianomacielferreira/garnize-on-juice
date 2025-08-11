@@ -184,7 +184,7 @@ public:
      *
      * @param message Mensagem de erro a ser registrada.
      */
-    static void error(const std::string &message)
+    static void error(const string &message)
     {
         cerr << "Erro: " << message << endl;
     }
@@ -194,7 +194,7 @@ public:
      *
      * @param message Mensagem de informação a ser registrada.
      */
-    static void info(const std::string &message)
+    static void info(const string &message)
     {
         cout << "Info: " << message << endl;
     }
@@ -1784,7 +1784,7 @@ public:
         }
 
         // Pega uma conexao do pool
-        sqlite3* database = connectionPoolUtils.getConnectionFromPool();
+        sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
         string path = HttpRequestParser::extractMethod(request);
 
@@ -1869,7 +1869,7 @@ public:
             send(socket, response.c_str(), response.size(), 0);
         }
 
-        connectionPoolUtils.returnConnectionToPool(database);        
+        connectionPoolUtils.returnConnectionToPool(database);
 
         // Fechar a conexão
         close(socket);
@@ -1959,10 +1959,6 @@ int main()
     HealthCheckUtils::init(database);
     PaymentsUtils::init(database);
 
-    /**
-     * @todo Serviço de health check, uma única thread que ficará
-     * rodando a cada 5 segundos batendo no endpoint e salvando o resultado
-     */
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckServiceThread::init(connectionPool);
 
