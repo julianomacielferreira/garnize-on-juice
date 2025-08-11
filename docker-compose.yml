@@ -6,6 +6,9 @@ services:
       - "9999:9999"
     networks:
       - payment-processor
+    environment:
+      - PROCESSOR_DEFAULT=http://payment-processor-default:8080
+      - PROCESSOR_FALLBACK=http://payment-processor-fallback:8080
     deploy:
       resources:
         limits:
