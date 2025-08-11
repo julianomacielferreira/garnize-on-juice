@@ -8,7 +8,7 @@
 # com um intervalo de 0.05 segundos entre cada requisição.
 
 # O script aguarda todas as requisições em segundo plano terminarem antes de sair.
-NUM_REQUISICOES=100
+NUM_REQUISICOES=1000
 
 BASE_URL="http://localhost:9999"
 
@@ -27,14 +27,14 @@ TO_DATE="2025-08-09T00%3A15%3A08.174Z"
 for i in $(seq 1 $NUM_REQUISICOES); do
   curl --location --request POST "$PAYMENTS_ENDPOINT" \
     --header 'Content-Type: application/json' \
-    --data "$PAYLOAD" &
+    --data "$PAYLOAD" > /dev/null &
   
-  sleep 0.05
+  sleep 0.03
   
-  curl --location --request GET "$PAYMENTS_SUMMARY_ENDPOINT?from=$FROM_DATE&to=$TO_DATE" > /dev/null &
+  #curl --location --request GET "$PAYMENTS_SUMMARY_ENDPOINT?from=$FROM_DATE&to=$TO_DATE" > /dev/null &
   
   # Aguarde um pouco antes da próxima requisição
-  sleep 0.05
+  #sleep 0.05
 done
 
 # Aguarde todas as requisições em segundo plano terminarem

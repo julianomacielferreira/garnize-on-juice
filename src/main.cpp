@@ -1783,6 +1783,9 @@ public:
             return;
         }
 
+        // Pega uma conexao do pool
+        sqlite3* database = connectionPoolUtils.getConnectionFromPool();
+
         string path = HttpRequestParser::extractMethod(request);
 
         if (method == "POST" && path == Constants::PAYMENTS_ENDPOINT)
@@ -1795,7 +1798,7 @@ public:
             if (bodyPos != string::npos)
             {
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentsProcessor::payment(body, connectionPoolUtils.getConnectionFromPool());
+                map<string, string> response = PaymentsProcessor::payment(body, database);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1819,7 +1822,7 @@ public:
             if (queryPos != string::npos)
             {
                 string query = path.substr(queryPos + 1);
-                map<string, string> response = PaymentsProcessor::paymentSummary(query, connectionPoolUtils.getConnectionFromPool());
+                map<string, string> response = PaymentsProcessor::paymentSummary(query, database);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1838,7 +1841,7 @@ public:
             cout << endl;
             LOGGER::info("POST request para /purge-payments");
 
-            bool success = PaymentsUtils::deleteAllPayments(connectionPoolUtils.getConnectionFromPool());
+            bool success = PaymentsUtils::deleteAllPayments(database);
 
             string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
 
@@ -1865,6 +1868,8 @@ public:
             string response = Constants::NOT_FOUND_RESPONSE;
             send(socket, response.c_str(), response.size(), 0);
         }
+
+        connectionPoolUtils.returnConnectionToPool(database);        
 
         // Fechar a conexão
         close(socket);
@@ -1960,6 +1965,8 @@ int main()
      */
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckServiceThread::init(connectionPool);
+
+    connectionPool.returnConnectionToPool(database);
 
     cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
