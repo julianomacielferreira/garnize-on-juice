@@ -2,7 +2,9 @@
 
 Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
 
-O <u>meu objetivo</u> foi utilizar o <u>**mínimo de dependências**</u> para criar uma solução que processa o máximo de pagamentos possível (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
+O <u>meu objetivo</u> foi utilizar o conhecimendo do livro [Programação em C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos e testar minhas habilidades em **C++**. 
+
+Criei uma solução com o <u>**mínimo de dependências**</u> para processar o máximo de pagamentos possível (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
 Para entender melhor as soluções, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
@@ -10,6 +12,7 @@ Para entender melhor as soluções, decisões técnicas adotadas, _insights_ sob
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
+![Programação com C++](static/livro-c++.jpg)
 ### O que é a Rinha do Backend
 
 De acordo com o repositório oficial [zanfranceschi/rinha-de-backend-2025](https://github.com/zanfranceschi/rinha-de-backend-2025):
