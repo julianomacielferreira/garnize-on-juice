@@ -6,3 +6,9 @@ PURGE_PAYMENTS_ENDPOINT="${BASE_URL}/purge-payments"
 
 # Envia uma requisição POST para o endpoint de limpeza o banco
 curl --location --request POST "$PURGE_PAYMENTS_ENDPOINT" --header 'Content-Type: application/json' 
+
+curl --location --request POST 'http://localhost:8001/admin/purge-payments' \
+--header 'X-Rinha-Token: 123'
+
+curl --location --request POST 'http://localhost:8002/admin/purge-payments' \
+--header 'X-Rinha-Token: 123'
