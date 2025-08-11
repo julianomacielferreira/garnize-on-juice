@@ -2,9 +2,11 @@
 
 Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
 
-O objetivo é processar o máximo de pagamentos possível.
+O <u>meu objetivo</u> foi utilizar o <u>**mínimo de dependências**</u> para criar uma solução que processa o máximo de pagamentos possível (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
 Para entender melhor as soluções, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
+
+**Nota:** O código deste projeto depende dos serviços de processamento de pagamento que estão em [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor]()
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
@@ -89,6 +91,7 @@ O arquivo `launch.json` no diretório `.vscode` do projeto já configura a depur
 Pré-requisitos
 
 - Docker e Docker Compose instalados na máquina
+- Serviços de pagamento do Francisco Zanfranceschi [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor](https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor)
 
 Passo a Passo
 
@@ -240,9 +243,9 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 ### Detalhes Técnicos e Possíveis Melhorias
 
-Obviamente, a primeira melhoria seria melhorar no "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
+Obviamente, a primeira melhoria seria aderir ao "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
 
-Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer.
+Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer em outros cenários.
 
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
 - Parsear o JSON sem usar nenhuma biblioteca (Ex.: `nlohmann/json`).
@@ -403,8 +406,6 @@ Isso é uma regra do padrão C++ para evitar problemas de múltiplas definiçõe
 Utilizei também minha mesa digitalizadora wacom com o software Xournal++ para rascunhar e elaborar melhor as soluções.
 
 ![Wacom](static/mesa-digitalizadora-wacom.jpg)
-
-@TODO
 
 ## Referências
 
