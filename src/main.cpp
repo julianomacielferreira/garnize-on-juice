@@ -1282,11 +1282,7 @@ public:
     static double getTotalAmount(bool defaultService, const string &to, const string &from)
     {
         string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt BETWEEN ? AND ?";
-
-        if (defaultService)
-        {
-            SQL_QUERY += " AND defaultService = 1";
-        }
+        SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
         {
@@ -1313,11 +1309,7 @@ public:
     static int getTotalRecords(bool defaultService, const string &to, const string &from)
     {
         string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt BETWEEN ? AND ?";
-
-        if (defaultService)
-        {
-            SQL_QUERY += " AND defaultService = 1";
-        }
+        SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
         {
@@ -1618,10 +1610,10 @@ public:
          */
         // Calcula o total de pagamentos no período com a o banco de dados
         PaymentsSummary paymentSummary;
-        paymentSummary.defaultStats.totalRequests = 43236;
-        paymentSummary.defaultStats.totalAmount = 415542345.98;
-        paymentSummary.fallbackStats.totalRequests = 423545;
-        paymentSummary.fallbackStats.totalAmount = 329347.34;
+        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(true, to, from);
+        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(true, to, from);
+        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(false, to, from);
+        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(false, to, from);
 
         // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
