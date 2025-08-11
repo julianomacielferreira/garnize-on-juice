@@ -12,10 +12,6 @@ Para entender melhor as soluções, decisões técnicas adotadas, _insights_ sob
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
-### Livro Princípios e Práticas de Programação com C++
-
-![Programação com C++](static/livro-c++.jpg)
-
 ### O que é a Rinha do Backend
 
 De acordo com o repositório oficial [zanfranceschi/rinha-de-backend-2025](https://github.com/zanfranceschi/rinha-de-backend-2025):
@@ -403,6 +399,11 @@ A declaração da variável estática dentro da classe é como uma promessa ao c
 Se você não definir a variável estática fora da classe, o compilador saberá que a variável existe, mas o linker não encontrará a definição da variável e irá gerar um erro de "undefined reference".
 
 Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
+
+
+### Livro Princípios e Práticas de Programação com C++
+
+![Programação com C++](static/livro-c++.jpg)
 
 ### Ferramentas
 
