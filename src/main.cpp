@@ -72,6 +72,11 @@ public:
     inline static const string BAD_REQUEST_RESPONSE = "HTTP/1.1 400 Bad Request";
 
     /**
+     * @brief Resposta HTTP padrão erro interno do servidor (500 Bad Request).
+     */
+    inline static const string INTERNAL_SERVER_ERROR = "HTTP/1.1 500 Internal Server Error";
+
+    /**
      * @brief Resposta HTTP padrão para recursos não encontrados (404 Not Found).
      */
     inline static const string NOT_FOUND_RESPONSE = "HTTP/1.1 404 Not Found\r\n\r\n";
@@ -1464,13 +1469,14 @@ public:
      * @brief Lida com requisições POST /payments.
      *
      * Esse método verifica se a requisição é válida, parseia o corpo da requisição,
-     * cria um pagamento e o armazena no mapa de pagamentos.
+     * cria um pagamento e o armazena na fila compartilhada entre as threads.
      *
      * @param body Corpo da requisição.
-     * @param database Ponteiro para o objeto sqlite3.
+     * @param useDefaultService Flag que indica se o servico 'default' é pra ser utilizado.
+     * @param useFallbackService Flag que indica se o servico 'default' é pra ser utilizado.
      * @return Resposta HTTP.
      */
-    static map<string, string> payment(const string &body, sqlite3 *database)
+    static map<string, string> payment(const string &body, bool useDefaultService, bool useFallbackService)
     {
         Timer timer;
 
@@ -1514,8 +1520,6 @@ public:
 
         // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
         // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
-        bool useDefaultService = HealthCheckUtils::checkDefault(database);
-
         if (useDefaultService)
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
@@ -1567,7 +1571,10 @@ public:
 
                         LOGGER::info(stringBuilder.str());
 
-                        PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
+                        /**
+                         * @todo Enviar para uma fila compartilhada e uma thread única vai inserir no banco
+                         */
+                        // PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
 
                         responseMap["status"] = Constants::CREATED_RESPONSE;
                         responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
@@ -1585,8 +1592,6 @@ public:
         }
         else
         {
-            bool useFallbackService = HealthCheckUtils::checkFallback(database);
-
             if (useFallbackService)
             {
                 LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
@@ -1639,7 +1644,10 @@ public:
 
                             LOGGER::info(stringBuilder.str());
 
-                            PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
+                            /**
+                             * @todo Enviar para uma fila compartilhada e uma thread única vai inserir no banco
+                             */
+                            // PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
 
                             responseMap["status"] = Constants::CREATED_RESPONSE;
                             responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
@@ -1647,7 +1655,6 @@ public:
                         else
                         {
                             responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
-                            responseMap["response"] = "Erro na request payload: " + payload;
                         }
                     }
 
@@ -1663,6 +1670,9 @@ public:
                  */
                 LOGGER::info("ALERTA!!! Nenhum serviço está funcionando, tanto o 'default' quanto o 'fallback'");
                 LOGGER::info("Salvar o payment em alguma estrura e reprocessar após 5 segundos");
+
+                responseMap["status"] = Constants::INTERNAL_SERVER_ERROR;
+                responseMap["response"] = "{ \"message\": \"Erro interno do servidor\"}";
             }
         }
 
@@ -1809,8 +1819,20 @@ public:
 
             if (bodyPos != string::npos)
             {
+
+                /**
+                 * @todo Débito técnico - Remover esse código, pensar em um lugar apropriado
+                 */
+                bool useDefaultService = HealthCheckUtils::checkDefault(database);
+                bool useFallbackService = false;
+
+                if (!useDefaultService)
+                {
+                    HealthCheckUtils::checkFallback(database);
+                }
+
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentsProcessor::payment(body, database);
+                map<string, string> response = PaymentsProcessor::payment(body, useDefaultService, useFallbackService);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1960,21 +1982,21 @@ int main()
     // Inicializa modo multithread do SQLite
     if (!SQLiteDatabaseUtils::setUpMultiThreadedMode())
     {
-        LOGGER::error("SQLite não funcionando em modo multithead");
+        LOGGER::error("SQLite não está funcionando em modo multithead");
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPool(10, 5000);
+    SQLiteConnectionPoolUtils connectionPool(5, 10000);
     sqlite3 *database = connectionPool.getConnectionFromPool();
 
     LOGGER::info("Verificando tabelas no banco de dados");
     HealthCheckUtils::init(database);
     PaymentsUtils::init(database);
 
+    connectionPool.returnConnectionToPool(database);
+
     LOGGER::info("Inicializando serviço de Health Check");
     HealthCheckServiceThread::init(connectionPool);
-
-    connectionPool.returnConnectionToPool(database);
 
     cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
