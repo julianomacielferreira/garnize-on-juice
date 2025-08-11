@@ -1289,10 +1289,6 @@ public:
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
 
-            /**
-             * @todo Débito técnico, código duplicado
-             */
-            // Fazer a curl request para o servico default, lembrar o default timeout
             string payload = PaymentsJSONConverter::toJson(payment);
             string defaultResponseBuffer;
             string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
@@ -1305,6 +1301,7 @@ public:
                 headers = curl_slist_append(headers, "Content-Type: application/json");
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
+                // Faz request para o servico 'default'
                 CURLcode responseCode = curl_easy_perform(curl);
 
                 if (responseCode != CURLE_OK)
@@ -1320,6 +1317,9 @@ public:
 
                     if (HTTP_RESPONSE_CODE == 200)
                     {
+                        /**
+                         * @todo Débito técnico, código duplicado
+                         */
                         map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
                         sqlite3 *database = SQLiteDatabaseUtils::openConnection();
@@ -1367,22 +1367,19 @@ public:
             {
                 LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
 
-                /**
-                 * @todo Débito técnico, código duplicado
-                 */
-                // Fazer a curl request para o servico default, lembrar o default timeout
                 string payload = PaymentsJSONConverter::toJson(payment);
                 string URL = Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT;
                 string fallbackResponseBuffer;
+
                 CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, fallbackResponseBuffer);
 
                 if (curl)
                 {
-
                     struct curl_slist *headers = NULL;
                     headers = curl_slist_append(headers, "Content-Type: application/json");
                     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
+                    // Faz request para o servico 'fallback'
                     CURLcode responseCode = curl_easy_perform(curl);
 
                     if (responseCode != CURLE_OK)
@@ -1399,6 +1396,9 @@ public:
 
                         if (HTTP_RESPONSE_CODE == 200)
                         {
+                            /**
+                             * @todo Débito técnico, código duplicado
+                             */
                             map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
                             sqlite3 *database = SQLiteDatabaseUtils::openConnection();
@@ -1413,7 +1413,7 @@ public:
                                 stringBuilder << to_string(payment.amount);
                                 stringBuilder << ", requestedAt=";
                                 stringBuilder << payment.requestedAt;
-                                stringBuilder << ", defaultService=false, processed=";
+                                stringBuilder << ", defaultService=false, processed="; // Unica coisa eu muda do default
                                 stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
                                 stringBuilder << ")";
 
