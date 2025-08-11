@@ -1219,6 +1219,119 @@ public:
 
         return true;
     }
+
+    /**
+     * @brief Executa uma query no banco de dados e retorna o resultado.
+     *
+     * @param query A query a ser executada.
+     * @param bindParams Função que faz o bind dos parâmetros da query.
+     * @param extractResult Função que extrai o resultado da query.
+     * @return T O resultado da query.
+     */
+    template <typename T>
+    static T executeQuery(const string &query, function<void(sqlite3_stmt *)> bindParams, function<T(sqlite3_stmt *)> extractResult)
+    {
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection();
+        sqlite3_stmt *statement;
+        T result;
+
+        // Erro ao abrir a conexão
+        if (database == nullptr)
+        {
+            return -1;
+        }
+
+        // Preparar a query
+        int responseCode = sqlite3_prepare_v2(database, query.c_str(), -1, &statement, 0);
+
+        // Erro ao preparar a query
+        if (responseCode != SQLITE_OK)
+        {
+            SQLiteDatabaseUtils::closeConnection(database);
+
+            return -1;
+        }
+
+        // Bind dos parâmetros
+        bindParams(statement);
+
+        // Executa a query
+        responseCode = sqlite3_step(statement);
+
+        if (responseCode == SQLITE_ROW)
+        {
+            result = extractResult(statement);
+        }
+
+        // Finaliza a query
+        sqlite3_finalize(statement);
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        return result;
+    }
+
+    /**
+     * @brief Calcula o total da coluna amount da tabela payments com base nos parâmetros fornecidos.
+     *
+     * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
+     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
+     * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
+     * @return double O total da coluna amount.
+     */
+    static double getTotalAmount(bool defaultService, const string &to, const string &from)
+    {
+        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt BETWEEN ? AND ?";
+
+        if (defaultService)
+        {
+            SQL_QUERY += " AND defaultService = 1";
+        }
+
+        auto bindParams = [&](sqlite3_stmt *statement)
+        {
+            sqlite3_bind_text(statement, 1, from.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(statement, 2, to.c_str(), -1, SQLITE_STATIC);
+        };
+
+        auto extractResult = [](sqlite3_stmt *statement)
+        {
+            return sqlite3_column_double(statement, 0);
+        };
+
+        return executeQuery<double>(SQL_QUERY, bindParams, extractResult);
+    }
+
+    /**
+     * @brief Calcula o total de registros da tabela payments com base nos parâmetros fornecidos.
+     *
+     * @param defaultService Indica se deve considerar apenas os registros com defaultService = 1.
+     * @param to Data e hora final para a cláusula BETWEEN na coluna requestedAt.
+     * @param from Data e hora inicial para a cláusula BETWEEN na coluna requestedAt.
+     * @return int O total de registros.
+     */
+    static int getTotalRecords(bool defaultService, const string &to, const string &from)
+    {
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt BETWEEN ? AND ?";
+
+        if (defaultService)
+        {
+            SQL_QUERY += " AND defaultService = 1";
+        }
+
+        auto bindParams = [&](sqlite3_stmt *statement)
+        {
+            sqlite3_bind_text(statement, 1, from.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(statement, 2, to.c_str(), -1, SQLITE_STATIC);
+        };
+
+        auto extractResult = [](sqlite3_stmt *statement)
+        {
+            return sqlite3_column_int(statement, 0);
+        };
+
+        return executeQuery<int>(SQL_QUERY, bindParams, extractResult);
+    }
 };
 
 /**
