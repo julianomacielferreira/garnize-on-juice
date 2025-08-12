@@ -236,7 +236,7 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 Obviamente, a primeira melhoria seria aderir ao "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
 
-O SQLite3 não é projeto para escritas concorrentes em grande volume. Então, tive que implementar um mecanismo de fila compartilhada entre as thread, onde uma única thread fica responsável por fazer os inserts.
+O SQLite3 não é projeto para escritas concorrentes em grande volume. Então, tive que implementar um mecanismo de fila compartilhada entre as threads, onde uma única thread fica responsável por fazer os inserts.
 
 Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer em outros cenários.
 
