@@ -253,7 +253,7 @@ Obviamente, a primeira melhoria seria aderir ao "estilo de programação C++". T
 
 O SQLite3 não é projeto para escritas concorrentes em grande volume. Então, tive que implementar um mecanismo de fila compartilhada entre as threads, onde uma única thread fica responsável por fazer os inserts.
 
-Utilizar um ``Event Loop`` devido ao grande volume de requisições por segundo (cada request == 1 thread). Apesar do limite de threads no meu hardware ser de 126922, muitas threads significam muitas ``Stacks``. Elas são usadas para variáveis locais e chamadas de funções, o que torna o uso de memória por thread difícil de controlar.
+Utilizar um ``Event Loop`` com thead única, devido ao grande volume de requisições por segundo (cada request == 1 thread). Apesar do limite de threads no meu hardware ser de 126922, muitas threads significam muitas ``Stacks``. Elas são usadas para variáveis locais e chamadas de funções, o que torna o uso de memória por thread difícil de controlar.
 
 ```bash
 $ cat /proc/sys/kernel/threads-max
