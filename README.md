@@ -38,6 +38,7 @@ conhecimento! Esta é a terceira edição do desafio.
 ├── static
 │   ├── DATABASE_MODEL.png
 │   ├── garnize-on-juice.png
+│   ├── livro-c++.jpg
 │   └── mesa-digitalizadora-wacom.jpg
 ├── test-purge-databse.sh
 └── test-requests.sh
