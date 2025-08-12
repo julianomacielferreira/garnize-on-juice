@@ -929,9 +929,7 @@ public:
                    minResponseTime, 
                    lastCheck 
               FROM service_health_check 
-             WHERE service = ? 
-          ORDER BY lastCheck DESC 
-             LIMIT 1;
+             WHERE service = ?;
         )";
 
         HealthCheck healthCheck;
