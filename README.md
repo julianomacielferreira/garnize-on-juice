@@ -1,10 +1,8 @@
 ## Garnize on Juice $${\color{red}[in \space progress]}$$
 
-<u>**Garnizé com Suco**</u> foi um projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
+<u>**Garnizé com Suco**</u> foi um projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
-O <u>meu objetivo</u> foi utilizar o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos e testar minhas habilidades em **C++**. 
-
-Criei uma solução com o <u>**mínimo de dependências**</u> para processar o máximo de pagamentos possível (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
+O <u>principal objetivo</u> foi  testar minhas habilidades em **C++** criando uma solução com o <u>**mínimo de dependências**</u> e, utilizando o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos, me divertir bastante e aprender.
 
 Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
