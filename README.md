@@ -253,6 +253,13 @@ Obviamente, a primeira melhoria seria aderir ao "estilo de programação C++". T
 
 O SQLite3 não é projeto para escritas concorrentes em grande volume. Então, tive que implementar um mecanismo de fila compartilhada entre as threads, onde uma única thread fica responsável por fazer os inserts.
 
+Utilizar um ``Event Loop`` devido ao grande volume de requisições por segundo (cada request == 1 thread). Apesar do limite de threads no meu hardware ser de 126922, muitas threads significam muitas ``Stacks``. Elas são usadas para variáveis locais e chamadas de funções, o que torna o uso de memória por thread difícil de controlar.
+
+```bash
+$ cat /proc/sys/kernel/threads-max
+126922
+```
+
 Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer em outros cenários.
 
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
