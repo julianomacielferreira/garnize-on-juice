@@ -2,7 +2,7 @@
 
 <u>**Garnizé com Suco**</u> é uma solução desenvolvida em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
-**<u>Meu principal objetivo</u>** foi utilizar **C++** com o **<u>mínimo de dependências</u>** (somente do SQLite3) sem necessidade de instalação de outros projetos e libs que não fizessem parte da biblioteca padrão do **C++** (std). 
+**<u>Meu principal objetivo</u>** foi utilizar **C++** com o **<u>mínimo de dependências</u>** (somente SQLite3, cURL e UUID) sem necessidade de instalação de outros projetos / libs que não fizessem parte da biblioteca padrão do **C++ (std)**.
 
 Utilizei muito o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos.
 
@@ -47,7 +47,7 @@ conhecimento! Esta é a terceira edição do desafio.
 
 **Nota:** O código deste projeto depende dos serviços de processamento de pagamento que estão em [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor]()
 
-Certifique-se de que você tenha a biblioteca SQLite, cURL e libuuid instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
+Certifique-se de que você tenha a biblioteca **SQLite**, **cURL** e **libuuid** instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
 ```bash
 $ sudo apt-get install libsqlite3-dev libcurl4-openssl-dev uuid-dev
@@ -60,6 +60,22 @@ Para usar o script, basta executá-lo com ou sem a flag `--debug`:
 ```bash
 ./compile.sh # Compila com flag de otimização
 ./compile.sh --debug # Compila para depuração
+```
+
+**Nota:** Caso o comando acima gere algum erro, certifique-se ter o compilador ``gcc / g++`` instalado na sua máquina.
+
+```bash
+$ g++ --version
+g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
+Copyright (C) 2021 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+```
+
+Caso não possua, basta executar no terminal:
+
+```bash
+$ sudo apt-get install build-essential
 ```
 
 Para depurar o código, é necessário ter o `GDB (GNU Debugger)` instalado em sua máquina e usar a extensão `"C/C++"` do VSCode, que inclui suporte ao GDB.
@@ -226,8 +242,8 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 ```json
 {
-    "message": "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.",
-    "success": true
+  "message": "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.",
+  "success": true
 }
 ```
 
@@ -276,15 +292,15 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
 ```
 
-#### A coluna ``correlationId`` deveria ser BLOB e não TEXT
+#### A coluna `correlationId` deveria ser BLOB e não TEXT
 
-Salvar UUIDs como campos ``TEXT`` no SQLite pode ter perda de desempenho em comparação com salvar como campos ``BLOB``.
+Salvar UUIDs como campos `TEXT` no SQLite pode ter perda de desempenho em comparação com salvar como campos `BLOB`.
 
 Algumas razões pelas quais isso pode ocorrer:
 
-1. Tamanho do campo: Os UUIDs como strings ``TEXT`` ocupam mais espaço do que os UUIDs como ``BLOB``, pois as strings precisam de caracteres adicionais para representar os traços e outros caracteres. Isso pode aumentar o tamanho da tabela e afetar o desempenho de consultas.
-2. Indexação: A indexação de campos ``TEXT`` pode ser mais lenta do que a indexação de campos ``BLOB``, pois as strings precisam ser comparadas caractere por caractere.
-3. Conversão: Ao salvar UUIDs como ``TEXT``, o SQLite precisa converter o ``UUID`` para uma string, o que pode ser um processo lento.
+1. Tamanho do campo: Os UUIDs como strings `TEXT` ocupam mais espaço do que os UUIDs como `BLOB`, pois as strings precisam de caracteres adicionais para representar os traços e outros caracteres. Isso pode aumentar o tamanho da tabela e afetar o desempenho de consultas.
+2. Indexação: A indexação de campos `TEXT` pode ser mais lenta do que a indexação de campos `BLOB`, pois as strings precisam ser comparadas caractere por caractere.
+3. Conversão: Ao salvar UUIDs como `TEXT`, o SQLite precisa converter o `UUID` para uma string, o que pode ser um processo lento.
 
 #### Estrutura de classes criada
 
@@ -394,7 +410,6 @@ A declaração da variável estática dentro da classe é como uma promessa ao c
 Se você não definir a variável estática fora da classe, o compilador saberá que a variável existe, mas o linker não encontrará a definição da variável e irá gerar um erro de "undefined reference".
 
 Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
-
 
 ### Livro Princípios e Práticas de Programação com C++
 
