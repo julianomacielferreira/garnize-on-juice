@@ -236,6 +236,8 @@ $ curl --location --request POST 'http://localhost:9999/purge-payments' \
 
 Obviamente, a primeira melhoria seria aderir ao "estilo de programação C++". Tanto em relação a separação dos arquivos, paradigmas de programação, quanto com relação a arquitetura da solução.
 
+O SQLite3 não é projeto para escritas concorrentes em grande volume. Então, tive que implementar um mecanismo de fila compartilhada entre as thread, onde uma única thread fica responsável por fazer os inserts.
+
 Muitas partes da solução eu implementei "na mão", porém, não implementei tratativas para os diferentes erros que podem acontecer em outros cenários.
 
 - Lógica de requests / responses de um servidor utilizando sockets (tive que ler o livro [Build Your Own Redis with C/C++](https://build-your-own.org/redis)) para entender como são as chamadas de sistema (system calls), como tratar requisições simultâneas, quais as abordagens possíveis, etc.
