@@ -4,8 +4,6 @@
 
 **<u>Meu principal objetivo</u>** foi utilizar **C++** com o **<u>mínimo de dependências</u>** (somente SQLite3, cURL e UUID) sem necessidade de instalação de outros projetos / libs que não fizessem parte da biblioteca padrão do **C++ (std)**.
 
-Utilizei muito o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos.
-
 Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
 ![Garnize On Juice](static/garnize-on-juice.png)
@@ -417,6 +415,8 @@ Se você não definir a variável estática fora da classe, o compilador saberá
 Isso é uma regra do padrão C++ para evitar problemas de múltiplas definições de variáveis estáticas em diferentes unidades de compilação.
 
 ### Livro Princípios e Práticas de Programação com C++
+
+Utilizei muito o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos.
 
 ![Programação com C++](static/livro-c++.jpg)
 

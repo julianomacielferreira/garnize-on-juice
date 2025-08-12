@@ -5,7 +5,7 @@
 
 # Realiza $NUM_REQUISICOES requisições de pagamento para o endpoint $PAYMENTS_ENDPOINT
 # e requisições de resumo de pagamentos para o endpoint $PAYMENTS_SUMMARY_ENDPOINT,
-# com um intervalo de 0.05 segundos entre cada requisição.
+# com um intervalo de 0.01 segundos entre cada requisição.
 
 # O script aguarda todas as requisições em segundo plano terminarem antes de sair.
 NUM_REQUISICOES=1000
@@ -29,7 +29,7 @@ for i in $(seq 1 $NUM_REQUISICOES); do
     --header 'Content-Type: application/json' \
     --data "$PAYLOAD" > /dev/null &
   
-  sleep 0.03
+  sleep 0.04
   
   #curl --location --request GET "$PAYMENTS_SUMMARY_ENDPOINT?from=$FROM_DATE&to=$TO_DATE" > /dev/null &
   
