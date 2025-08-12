@@ -1018,6 +1018,9 @@ public:
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'default'");
 
+        /**
+         * @todo Código duplicado
+         */
         CURLcode responseCodeDefault;
         string URL_DEFAULT = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
         string defaultResponseBuffer;
@@ -1035,7 +1038,6 @@ public:
             else
             {
                 LOGGER::info(string("Dados recebidos: ") + string(defaultResponseBuffer));
-                LOGGER::info("Atualizando na base o registro do serviço 'default'");
 
                 map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
@@ -1049,6 +1051,8 @@ public:
                     healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
                     healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
 
+                    LOGGER::info("Atualizando no banco de dados o registro do serviço 'default'");
+
                     HealthCheckUtils::updateHealthRecord(database, healthCheckDefault);
 
                     LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
@@ -1057,7 +1061,11 @@ public:
 
             curl_easy_cleanup(curl_default);
         }
+        //--
 
+        /**
+         * @todo Código duplicado
+         */
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
 
@@ -1079,7 +1087,6 @@ public:
             {
 
                 LOGGER::info(string("Dados recebidos: ") + string(fallbackResponseBuffer));
-                LOGGER::info("Atualizando na base o registro do serviço 'fallback'");
 
                 map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
@@ -1093,6 +1100,8 @@ public:
                     healthCheckFallback.minResponseTime = 0;
                     healthCheckFallback.lastCheck = TimeUtils::getTimestampUTC();
 
+                    LOGGER::info("Atualizando no banco de dados o registro do serviço 'fallback'");
+
                     HealthCheckUtils::updateHealthRecord(database, healthCheckFallback);
 
                     LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallback.lastCheck));
@@ -1101,13 +1110,14 @@ public:
 
             curl_easy_cleanup(curl_fallback);
         }
+        //--
     }
 
     /**
      * @brief Inicializa a thread de health check.
      *
      * Esse método cria uma thread que executa o método `check()` a cada 5 segundos.
-     * @note A thread é executada em um loop infinito, portanto é necessário ter um mecanismo para interromper a thread se necessário.
+     * @note A thread é executada em um loop infinito.
      */
     static void init(SQLiteConnectionPoolUtils &connectionPoolUtils)
     {
@@ -1118,11 +1128,15 @@ public:
                        sqlite3* database = connectionPoolUtils.getConnectionFromPool();
 
                        if(database == nullptr) {
+                        LOGGER::error("Não foi possível executar os health check, conexão com o banco nula.");
                         continue;
                        }
 
                        check(database);
+
                        connectionPoolUtils.returnConnectionToPool(database);
+
+                       // Para a thread por 5 segundos
                        this_thread::sleep_for(chrono::seconds(5));
                    } })
             .detach();
@@ -1470,9 +1484,7 @@ private:
  * @class PaymentsDatabaseWriter
  * @brief Gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
  *
- * Essa classe é responsável por gerenciar a escrita de dados no banco de dados
- * utilizando uma thread dedicada para escrever os
- * dados e uma fila para armazenar os dados a serem persistidos.
+ * Essa classe utiliza uma única thread dedicada para guardar em uma fila os pagamentos e a serem persistidos.
  */
 class PaymentsDatabaseWriter
 {
@@ -1490,9 +1502,9 @@ public:
     }
 
     /**
-     * @brief Adiciona um pagamento à fila de escrita.
+     * @brief Adiciona um pagamento à fila.
      *
-     * @param payment O pagamento a ser escrito no banco de dados.
+     * @param payment O pagamento a ser salvo no banco de dados.
      */
     void addPaymentToQueue(const Payment &payment)
     {
@@ -1504,7 +1516,7 @@ public:
     /**
      * @brief Destrói o objeto PaymentsDatabaseWriter.
      *
-     * Para a thread dedicada e limpa a fila de dados.
+     * Para a thread dedicada e limpa a fila de pagamentos.
      */
     ~PaymentsDatabaseWriter()
     {
@@ -1512,7 +1524,7 @@ public:
     }
 
     /**
-     * @brief Para a thread dedicada e limpa a fila de dados.
+     * @brief Para a thread dedicada e limpa a fila de pagamentos.
      */
     void stop()
     {
@@ -1531,7 +1543,7 @@ private:
     /**
      * @brief Função que é executada pela thread dedicada.
      *
-     * Lê os dados da fila de dados e os escreve no banco de dados.
+     * Lê os dados da fila de pagamentos e os escreve no banco de dados.
      */
     void savePayments()
     {
