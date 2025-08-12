@@ -660,7 +660,6 @@ public:
             else
             {
                 LOGGER::error("Erro ao criar pool de conexões");
-                return;
             }
         }
     }
