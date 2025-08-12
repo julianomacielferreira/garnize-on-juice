@@ -52,7 +52,8 @@ garnize_on_juice
 garnize_on_juice_debug
 
 # Local database
-garnize.db
+garnize-payments.db
+garnize-health-check.db
 
 # Database Model
 DATABASE_MODEL.mwb.bak
