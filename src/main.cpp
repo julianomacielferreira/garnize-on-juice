@@ -62,9 +62,14 @@ public:
     static const uint16_t BUFFER_SIZE = 512;
 
     /**
-     * @brief Nome do arquivo de banco de dados SQLite utilizado pela aplicação.
+     * @brief Nome do arquivo de banco de dados SQLite para salvar pagamentos.
      */
-    inline static const char *DATABASE_NAME = "garnize.db";
+    inline static const string DATABASE_PAYMENTS = "garnize-payments.db";
+
+    /**
+     * @brief Nome do arquivo de banco de dados SQLite para manter os dados de health check.
+     */
+    inline static const string DATABASE_HEALTH_CHECK = "garnize-health-check.db";
 
     /**
      * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
@@ -599,14 +604,15 @@ public:
      *
      * Configura o SQLite para funcionar em modo multi-thread e retorna um ponteiro para o objeto sqlite3.
      *
+     * @param DATABASE_NAME Nome do banco que deve ser aberta a conexão
      * @return sqlite3* Ponteiro para o objeto sqlite3 se a conexão for aberta com sucesso, ou nullptr caso contrário.
      */
-    static sqlite3 *openConnection()
+    static sqlite3 *openConnection(const string &DATABASE_NAME)
     {
 
         sqlite3 *database;
 
-        int response = sqlite3_open(Constants::DATABASE_NAME, &database);
+        int response = sqlite3_open(DATABASE_NAME.c_str(), &database);
 
         if (response)
         {
@@ -671,7 +677,7 @@ public:
     {
         for (int i = 0; i < maxConnections; i++)
         {
-            sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
+            sqlite3 *connection = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
 
             if (connection != nullptr)
             {
@@ -705,7 +711,7 @@ public:
 
         if (sqlite3Connections.empty())
         {
-            sqlite3 *connection = SQLiteDatabaseUtils::openConnection();
+            sqlite3 *connection = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
 
             if (connection == nullptr)
             {
@@ -804,14 +810,12 @@ public:
      * Esse método cria a tabela de health check se necessário,
      * verifica se os registros de health check para os serviços "default" e "fallback" estão criados.
      *
-     * @param database Ponteiro para o objeto sqlite3.
-     *
      * @return true se a inicialização foi bem-sucedida, false caso contrário.
      */
-    static bool init(sqlite3 *database)
+    static bool init()
     {
 
-        bool success = createHealthCkeckTable(database);
+        bool success = createHealthCkeckTable();
         LOGGER::info(success ? "Tabela do health check OK" : "Erro ao verificar tabela do health check");
 
         return success;
@@ -820,15 +824,13 @@ public:
     /**
      * @brief Verifica o serviço 'default' está funcionando.
      *
-     * @param database Ponteiro para o objeto sqlite3.
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkDefault(sqlite3 *database)
+    static bool checkDefault()
     {
 
-        // Verifica se o servico "default" esta funcionando
         HealthCheck healthCheckDefault;
-        healthCheckDefault = getLastHealthCheck(database, "default");
+        healthCheckDefault = getLastHealthCheck("default");
 
         if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
         {
@@ -843,33 +845,159 @@ public:
     /**
      * @brief Verifica o serviço 'fallback' está funcionando.
      *
-     * @param database Ponteiro para o objeto sqlite3.
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkFallback(sqlite3 *database)
+    static bool checkFallback()
     {
 
         // Verifica se o servico "fallback" esta funcionando
-        HealthCheck healthCheckFallBack = getLastHealthCheck(database, "fallback");
+        HealthCheck healthCheckFallBack = getLastHealthCheck("fallback");
 
-        if (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing)
+        bool success = (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing);
+
+        if (success)
         {
             LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
-
-            return true;
         }
 
-        return false;
+        return success;
+    }
+
+    /**
+     * @brief Atualiza um registro na tabela service_health_check.
+     *
+     * @param healthCheck Registro de HealthCheck a ser atualizado.
+     * @return bool True se o registro foi atualizado com sucesso, false caso contrário.
+     */
+    static bool updateHealthRecord(const HealthCheck &healthCheck)
+    {
+
+        sqlite3 *database = getDatabase();
+
+        const char *SQL_QUERY = R"(
+            UPDATE service_health_check SET service = ?, failing = ?, minResponseTime = ?, lastCheck = ? WHERE service = ?;
+        )";
+
+        sqlite3_stmt *statement;
+
+        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
+        bool success = (response == SQLITE_OK);
+
+        if (!success)
+        {
+            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
+        }
+        else
+        {
+
+            sqlite3_bind_text(statement, 1, healthCheck.service.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_int(statement, 2, healthCheck.failing);
+            sqlite3_bind_int(statement, 3, healthCheck.minResponseTime);
+            sqlite3_bind_text(statement, 4, healthCheck.lastCheck.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(statement, 5, healthCheck.service.c_str(), -1, SQLITE_STATIC);
+
+            response = sqlite3_step(statement);
+
+            success = (response == SQLITE_DONE);
+
+            if (!success)
+            {
+                LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
+            }
+
+            sqlite3_finalize(statement);
+        }
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        return success;
+    }
+
+    /**
+     * @brief Recupera o registro mais atual da tabela service_health_check.
+     *
+     * @param service String para escolher qual o serviço que deseja recuperar.
+     * @return HealthCheck contendo os valores do registro mais atual.
+     */
+    static HealthCheck getLastHealthCheck(const string &service)
+    {
+
+        sqlite3 *database = getDatabase();
+
+        const char *SQL_QUERY = R"(
+            SELECT service, 
+                   failing, 
+                   minResponseTime, 
+                   lastCheck 
+              FROM service_health_check 
+             WHERE service = ? 
+          ORDER BY lastCheck DESC 
+             LIMIT 1;
+        )";
+
+        HealthCheck healthCheck;
+
+        sqlite3_stmt *statement;
+
+        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
+        bool success = (response == SQLITE_OK);
+
+        if (!success)
+        {
+            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
+        }
+        else
+        {
+
+            sqlite3_bind_text(statement, 1, service.c_str(), -1, SQLITE_STATIC);
+
+            response = sqlite3_step(statement);
+
+            if (response == SQLITE_ROW)
+            {
+                healthCheck.service = reinterpret_cast<const char *>(sqlite3_column_text(statement, 0));
+                healthCheck.failing = sqlite3_column_int(statement, 1);
+                healthCheck.minResponseTime = sqlite3_column_int(statement, 2);
+                healthCheck.lastCheck = reinterpret_cast<const char *>(sqlite3_column_text(statement, 3));
+            }
+            else if (response == SQLITE_DONE)
+            {
+                LOGGER::info("Nenhum registro de service_health_check encontrado");
+            }
+            else
+            {
+                LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
+            }
+
+            sqlite3_finalize(statement);
+        }
+
+        SQLiteDatabaseUtils::closeConnection(database);
+
+        return healthCheck;
+    }
+
+private:
+    /**
+     * @brief Retorna um conexão com o banco de dados de health check.
+     *
+     * @return sqlite3* Ponteiro para o banco de dados.
+     */
+    static sqlite3 *getDatabase()
+    {
+        return SQLiteDatabaseUtils::openConnection(Constants::DATABASE_HEALTH_CHECK);
     }
 
     /**
      * @brief Cria a tabela service_health_check no banco de dados se ela não existir.
      *
-     * @param database Ponteiro para o objeto sqlite3.
      * @return bool True se a tabela foi criada com sucesso, false caso contrário.
      */
-    static bool createHealthCkeckTable(sqlite3 *database)
+    static bool createHealthCkeckTable()
     {
+
+        sqlite3 *database = getDatabase();
+
         const char *SQL_QUERY = R"(
             CREATE TABLE IF NOT EXISTS service_health_check (
                 service TEXT CHECK(service IN ('default', 'fallback')) NOT NULL,
@@ -885,116 +1013,18 @@ public:
 
         int response = sqlite3_exec(database, SQL_QUERY, nullptr, nullptr, &error);
 
-        if (response != SQLITE_OK)
+        bool success = (response == SQLITE_OK);
+
+        if (!success)
         {
             LOGGER::error(string("Erro ao criar tabela service_health_check: ") + string(error));
 
             sqlite3_free(error);
-
-            return false;
         }
 
-        return true;
-    }
+        SQLiteDatabaseUtils::closeConnection(database);
 
-    /**
-     * @brief Atualiza um registro na tabela service_health_check.
-     *
-     * @param database Ponteiro para o objeto sqlite3.
-     * @param healthCheck Registro de HealthCheck a ser atualizado.
-     * @return bool True se o registro foi atualizado com sucesso, false caso contrário.
-     */
-    static bool updateHealthRecord(sqlite3 *database, const HealthCheck &healthCheck)
-    {
-        const char *SQL_QUERY = R"(
-            UPDATE service_health_check SET service = ?, failing = ?, minResponseTime = ?, lastCheck = ? WHERE service = ?;
-        )";
-
-        sqlite3_stmt *statement;
-
-        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
-
-        if (response != SQLITE_OK)
-        {
-            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
-
-            return false;
-        }
-
-        sqlite3_bind_text(statement, 1, healthCheck.service.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_int(statement, 2, healthCheck.failing);
-        sqlite3_bind_int(statement, 3, healthCheck.minResponseTime);
-        sqlite3_bind_text(statement, 4, healthCheck.lastCheck.c_str(), -1, SQLITE_STATIC);
-        sqlite3_bind_text(statement, 5, healthCheck.service.c_str(), -1, SQLITE_STATIC);
-
-        response = sqlite3_step(statement);
-
-        if (response != SQLITE_DONE)
-        {
-            LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
-        }
-
-        sqlite3_finalize(statement);
-
-        return (response == SQLITE_DONE);
-    }
-
-    /**
-     * @brief Recupera o registro mais atual da tabela service_health_check.
-     *
-     * @param database Ponteiro para o objeto sqlite3.
-     * @param service String para escolher qual o serviço que deseja recuperar.
-     * @return HealthCheck contendo os valores do registro mais atual.
-     */
-    static HealthCheck getLastHealthCheck(sqlite3 *database, const string &service)
-    {
-        const char *SQL_QUERY = R"(
-            SELECT service, 
-                   failing, 
-                   minResponseTime, 
-                   lastCheck 
-              FROM service_health_check 
-             WHERE service = ? 
-          ORDER BY lastCheck DESC 
-             LIMIT 1;
-        )";
-
-        sqlite3_stmt *statement;
-
-        int response = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, nullptr);
-
-        HealthCheck healthCheck;
-
-        if (response != SQLITE_OK)
-        {
-            LOGGER::error(string("Erro ao preparar a query: ") + string(sqlite3_errmsg(database)));
-
-            return healthCheck;
-        }
-
-        sqlite3_bind_text(statement, 1, service.c_str(), -1, SQLITE_STATIC);
-
-        response = sqlite3_step(statement);
-
-        if (response == SQLITE_ROW)
-        {
-            healthCheck.service = reinterpret_cast<const char *>(sqlite3_column_text(statement, 0));
-            healthCheck.failing = sqlite3_column_int(statement, 1);
-            healthCheck.minResponseTime = sqlite3_column_int(statement, 2);
-            healthCheck.lastCheck = reinterpret_cast<const char *>(sqlite3_column_text(statement, 3));
-        }
-        else if (response == SQLITE_DONE)
-        {
-            LOGGER::info("Nenhum registro de service_health_check encontrado");
-        }
-        else
-        {
-            LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
-        }
-
-        sqlite3_finalize(statement);
-
-        return healthCheck;
+        return success;
     }
 };
 
@@ -1009,10 +1039,9 @@ public:
     /**
      * @brief Executa o health check dos serviços.
      *
-     * @param database Ponteiro para o objeto sqlite3.
      * Esse método faz requests para os serviços "default" e "fallback" para verificar seu status.
      */
-    static void check(sqlite3 *database)
+    static void check()
     {
 
         cout << endl;
@@ -1041,7 +1070,7 @@ public:
 
                 map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
-                HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck(database, "default");
+                HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck("default");
 
                 if (healthCheckDefault.service.size() > 0)
                 {
@@ -1053,7 +1082,7 @@ public:
 
                     LOGGER::info("Atualizando no banco de dados o registro do serviço 'default'");
 
-                    HealthCheckUtils::updateHealthRecord(database, healthCheckDefault);
+                    HealthCheckUtils::updateHealthRecord(healthCheckDefault);
 
                     LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
                 }
@@ -1090,7 +1119,7 @@ public:
 
                 map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
-                HealthCheck healthCheckFallback = HealthCheckUtils::getLastHealthCheck(database, "fallback");
+                HealthCheck healthCheckFallback = HealthCheckUtils::getLastHealthCheck("fallback");
 
                 if (healthCheckFallback.service.size() > 0)
                 {
@@ -1102,7 +1131,7 @@ public:
 
                     LOGGER::info("Atualizando no banco de dados o registro do serviço 'fallback'");
 
-                    HealthCheckUtils::updateHealthRecord(database, healthCheckFallback);
+                    HealthCheckUtils::updateHealthRecord(healthCheckFallback);
 
                     LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallback.lastCheck));
                 }
@@ -1119,22 +1148,13 @@ public:
      * Esse método cria uma thread que executa o método `check()` a cada 5 segundos.
      * @note A thread é executada em um loop infinito.
      */
-    static void init(SQLiteConnectionPoolUtils &connectionPoolUtils)
+    static void init()
     {
-        thread([&connectionPoolUtils]()
+        thread([]()
                {
                    while (true)
                    {                    
-                       sqlite3* database = connectionPoolUtils.getConnectionFromPool();
-
-                       if(database == nullptr) {
-                        LOGGER::error("Não foi possível executar os health check, conexão com o banco nula.");
-                        continue;
-                       }
-
-                       check(database);
-
-                       connectionPoolUtils.returnConnectionToPool(database);
+                       check();
 
                        // Para a thread por 5 segundos
                        this_thread::sleep_for(chrono::seconds(5));
@@ -1961,9 +1981,6 @@ public:
             return;
         }
 
-        // Pega uma conexao do pool
-        sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
-
         string path = HttpRequestParser::extractMethod(request);
 
         if (method == "POST" && path == Constants::PAYMENTS_ENDPOINT)
@@ -1979,12 +1996,12 @@ public:
                 /**
                  * @todo Débito técnico - Remover esse código, pensar em um lugar apropriado
                  */
-                bool useDefaultService = HealthCheckUtils::checkDefault(database);
+                bool useDefaultService = HealthCheckUtils::checkDefault();
                 bool useFallbackService = false;
 
                 if (!useDefaultService)
                 {
-                    HealthCheckUtils::checkFallback(database);
+                    HealthCheckUtils::checkFallback();
                 }
 
                 string body = request.substr(bodyPos + 4);
@@ -2001,18 +2018,54 @@ public:
                 send(socket, response.c_str(), response.size(), 0);
             }
         }
-        else if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
+        else
         {
+            // Pega uma conexao do pool
+            sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
-            cout << endl;
-            LOGGER::info("GET request para /payments-summary");
-
-            size_t queryPos = path.find("?");
-
-            if (queryPos != string::npos)
+            if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
             {
-                string query = path.substr(queryPos + 1);
-                map<string, string> response = PaymentsProcessor::paymentSummary(query, database);
+
+                cout << endl;
+                LOGGER::info("GET request para /payments-summary");
+
+                size_t queryPos = path.find("?");
+
+                if (queryPos != string::npos)
+                {
+                    string query = path.substr(queryPos + 1);
+                    map<string, string> response = PaymentsProcessor::paymentSummary(query, database);
+
+                    string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
+                    send(socket, headers.c_str(), headers.size(), 0);
+
+                    send(socket, response.at("response").c_str(), response.at("response").size(), 0);
+                }
+                else
+                {
+                    string response = Constants::BAD_REQUEST_RESPONSE;
+                    send(socket, response.c_str(), response.size(), 0);
+                }
+            }
+            else if (method == "POST" && path.find(Constants::PURGE_PAYMENTS_ENDPOINT) == 0)
+            {
+
+                cout << endl;
+                LOGGER::info("POST request para /purge-payments");
+
+                bool success = PaymentsUtils::deleteAllPayments(database);
+
+                string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
+
+                LOGGER::info(msg);
+
+                /**
+                 * @todo Criar uma classe que limpa o banco de dados sqlite
+                 * Deve lidar com a concorrência para evitar inconsistências de leitura / escrita simultâneas
+                 */
+                map<string, string> response = {
+                    {"status", Constants::OK_RESPONSE},
+                    {"response", "{ \"message\": \"" + msg + "\", \"success\": " + (success ? "true" : "false") + "}"}};
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -2021,45 +2074,15 @@ public:
             }
             else
             {
-                string response = Constants::BAD_REQUEST_RESPONSE;
+                cout << endl;
+                LOGGER::info("Essa request não está mapeada");
+
+                string response = Constants::NOT_FOUND_RESPONSE;
                 send(socket, response.c_str(), response.size(), 0);
             }
+
+            connectionPoolUtils.returnConnectionToPool(database);
         }
-        else if (method == "POST" && path.find(Constants::PURGE_PAYMENTS_ENDPOINT) == 0)
-        {
-
-            cout << endl;
-            LOGGER::info("POST request para /purge-payments");
-
-            bool success = PaymentsUtils::deleteAllPayments(database);
-
-            string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
-
-            LOGGER::info(msg);
-
-            /**
-             * @todo Criar uma classe que limpa o banco de dados sqlite
-             * Deve lidar com a concorrência para evitar inconsistências de leitura / escrita simultâneas
-             */
-            map<string, string> response = {
-                {"status", Constants::OK_RESPONSE},
-                {"response", "{ \"message\": \"" + msg + "\", \"success\": " + (success ? "true" : "false") + "}"}};
-
-            string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
-            send(socket, headers.c_str(), headers.size(), 0);
-
-            send(socket, response.at("response").c_str(), response.at("response").size(), 0);
-        }
-        else
-        {
-            cout << endl;
-            LOGGER::info("Essa request não está mapeada");
-
-            string response = Constants::NOT_FOUND_RESPONSE;
-            send(socket, response.c_str(), response.size(), 0);
-        }
-
-        connectionPoolUtils.returnConnectionToPool(database);
 
         // Fechar a conexão
         close(socket);
@@ -2148,13 +2171,13 @@ int main()
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
     LOGGER::info("Verificando tabelas no banco de dados");
-    HealthCheckUtils::init(database);
+    HealthCheckUtils::init();
     PaymentsUtils::init(database);
 
     connectionPoolUtils.returnConnectionToPool(database);
 
     LOGGER::info("Inicializando serviço de Health Check");
-    HealthCheckServiceThread::init(connectionPoolUtils);
+    HealthCheckServiceThread::init();
 
     cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
