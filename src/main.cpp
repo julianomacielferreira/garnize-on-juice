@@ -1148,6 +1148,16 @@ struct Payment
      * @brief Data do pagamento.
      */
     string requestedAt;
+
+    /**
+     * @brief Flag que indica se o pagamento foi pelo serviço 'default'.
+     */
+    bool defaultService;
+
+    /**
+     * @brief Flag que indica se esse pagamento foi processado por algum dos serviços.
+     */
+    bool processed;
 };
 
 /**
@@ -1326,7 +1336,7 @@ public:
      */
     static double getTotalAmount(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
+        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE processed = 1 AND requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -1354,7 +1364,7 @@ public:
      */
     static int getTotalRecords(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE requestedAt >=  ? AND requestedAt <= ?";
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND requestedAt >=  ? AND requestedAt <= ?";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -1457,6 +1467,140 @@ private:
 };
 
 /**
+ * @class PaymentsDatabaseWriter
+ * @brief Gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
+ *
+ * Essa classe é responsável por gerenciar a escrita de dados no banco de dados
+ * utilizando uma thread dedicada para escrever os
+ * dados e uma fila para armazenar os dados a serem persistidos.
+ */
+class PaymentsDatabaseWriter
+{
+public:
+    /**
+     * @brief Constrói um objeto PaymentsDatabaseWriter.
+     *
+     * @param _connectionPoolUtils O pool de conexões com o banco de dados.
+     */
+    PaymentsDatabaseWriter(SQLiteConnectionPoolUtils &_connectionPoolUtils)
+        : connectionPoolUtils(_connectionPoolUtils), isRunning(true)
+    {
+        threadWriter = thread([this]()
+                              { savePayments(); });
+    }
+
+    /**
+     * @brief Adiciona um pagamento à fila de escrita.
+     *
+     * @param payment O pagamento a ser escrito no banco de dados.
+     */
+    void addPaymentToQueue(const Payment &payment)
+    {
+        lock_guard<mutex> lock(mutualExclusionLock);
+        paymentsQueue.push(payment);
+        conditionVariable.notify_one();
+    }
+
+    /**
+     * @brief Destrói o objeto PaymentsDatabaseWriter.
+     *
+     * Para a thread dedicada e limpa a fila de dados.
+     */
+    ~PaymentsDatabaseWriter()
+    {
+        stop();
+    }
+
+    /**
+     * @brief Para a thread dedicada e limpa a fila de dados.
+     */
+    void stop()
+    {
+        {
+            lock_guard<mutex> lock(mutualExclusionLock);
+            isRunning = false;
+        }
+        conditionVariable.notify_all();
+        if (threadWriter.joinable())
+        {
+            threadWriter.join();
+        }
+    }
+
+private:
+    /**
+     * @brief Função que é executada pela thread dedicada.
+     *
+     * Lê os dados da fila de dados e os escreve no banco de dados.
+     */
+    void savePayments()
+    {
+        while (true)
+        {
+            Payment payment;
+            {
+                unique_lock<mutex> lock(mutualExclusionLock);
+                conditionVariable.wait(lock, [this]()
+                                       { return !paymentsQueue.empty() || !isRunning; });
+                if (!isRunning && paymentsQueue.empty())
+                {
+                    return; // Sai da thread se não estiver mais rodando e a fila estiver vazia
+                }
+                if (paymentsQueue.empty())
+                {
+                    continue; // Volta a esperar se a fila estiver vazia
+                }
+                payment = paymentsQueue.front();
+                paymentsQueue.pop();
+            }
+
+            sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
+
+            /**
+             * @todo chamadas para inserir registros de pagamento vindos do servido default e fallback
+             */
+            // Escreva os dados no banco de dados
+            PaymentsUtils::insert(database, payment, payment.defaultService, payment.processed);
+            /**
+             * @todo Pensar em essa thread gerenciar os updates dos service health check
+             *
+             */
+            connectionPoolUtils.returnConnectionToPool(database);
+        }
+    }
+
+    /**
+     * @brief  O pool de conexões com o banco de dados.
+     */
+    SQLiteConnectionPoolUtils &connectionPoolUtils;
+
+    /**
+     * @brief A thread dedicada para escrever os dados.
+     */
+    thread threadWriter;
+
+    /**
+     * @brief O mutex para sincronizar o acesso à fila.
+     */
+    mutex mutualExclusionLock;
+
+    /**
+     * @brief A variável de condição para notificar a thread dedicada.
+     */
+    condition_variable conditionVariable;
+
+    /**
+     * @brief  A fila de dados a serem escritos.
+     */
+    queue<Payment> paymentsQueue;
+
+    /**
+     * @brief  Indica se a thread dedicada está em execução.
+     */
+    bool isRunning;
+};
+
+/**
  * @brief Classe responsável por lidar com pagamentos.
  *
  * Essa classe fornece métodos estáticos para lidar com requisições de pagamento, incluindo
@@ -1472,11 +1616,12 @@ public:
      * cria um pagamento e o armazena na fila compartilhada entre as threads.
      *
      * @param body Corpo da requisição.
+     * @param paymentsDatabaseWriter Classe que gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
      * @param useDefaultService Flag que indica se o servico 'default' é pra ser utilizado.
      * @param useFallbackService Flag que indica se o servico 'default' é pra ser utilizado.
      * @return Resposta HTTP.
      */
-    static map<string, string> payment(const string &body, bool useDefaultService, bool useFallbackService)
+    static map<string, string> payment(const string &body, PaymentsDatabaseWriter &paymentsDatabaseWriter, bool useDefaultService, bool useFallbackService)
     {
         Timer timer;
 
@@ -1550,6 +1695,13 @@ public:
 
                     LOGGER::info("Service /payments 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
 
+                    /**
+                     * @todo Adicionar na fila do PaymentsDatabaseWriter
+                     */
+                    payment.defaultService = true;
+                    payment.processed = (HTTP_RESPONSE_CODE == 200);
+                    paymentsDatabaseWriter.addPaymentToQueue(payment);
+
                     if (HTTP_RESPONSE_CODE == 200)
                     {
                         /**
@@ -1570,11 +1722,6 @@ public:
                         stringBuilder << ")";
 
                         LOGGER::info(stringBuilder.str());
-
-                        /**
-                         * @todo Enviar para uma fila compartilhada e uma thread única vai inserir no banco
-                         */
-                        // PaymentsUtils::insert(database, payment, true, (HTTP_RESPONSE_CODE == 200));
 
                         responseMap["status"] = Constants::CREATED_RESPONSE;
                         responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
@@ -1623,6 +1770,13 @@ public:
 
                         LOGGER::info("Service /payments 'fallback' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
 
+                        /**
+                         * @todo Adicionar na fila do PaymentsDatabaseWriter
+                         */
+                        payment.defaultService = false;
+                        payment.processed = (HTTP_RESPONSE_CODE == 200);
+                        paymentsDatabaseWriter.addPaymentToQueue(payment);
+
                         if (HTTP_RESPONSE_CODE == 200)
                         {
                             /**
@@ -1643,11 +1797,6 @@ public:
                             stringBuilder << ")";
 
                             LOGGER::info(stringBuilder.str());
-
-                            /**
-                             * @todo Enviar para uma fila compartilhada e uma thread única vai inserir no banco
-                             */
-                            // PaymentsUtils::insert(database, payment, false, (HTTP_RESPONSE_CODE == 200));
 
                             responseMap["status"] = Constants::CREATED_RESPONSE;
                             responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
@@ -1722,10 +1871,6 @@ public:
 
         string to = query.substr(pos + 3);
 
-        /**
-         * @todo Definir a query (usar parâmetros da query string 'from' e 'to')
-         */
-        // Calcula o total de pagamentos no período com a o banco de dados
         PaymentsSummary paymentSummary;
         paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, from, to);
         paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, from, to);
@@ -1756,6 +1901,7 @@ public:
      * e então processa a requisição de acordo com o método e o caminho.
      *
      * @param socket O socket que recebeu a requisição.
+     * @param paymentsDatabaseWriter Classe que gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
      * @param connectionPoolUtils Classe utilitária que gerencia as conexões
      *
      * @details
@@ -1770,7 +1916,7 @@ public:
      * A função assume que o socket é válido e que a requisição é bem-formada.
      * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
      */
-    static void handleWith(int socket, SQLiteConnectionPoolUtils &connectionPoolUtils)
+    static void handleWith(int socket, PaymentsDatabaseWriter &paymentsDatabaseWriter, SQLiteConnectionPoolUtils &connectionPoolUtils)
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
@@ -1832,7 +1978,7 @@ public:
                 }
 
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentsProcessor::payment(body, useDefaultService, useFallbackService);
+                map<string, string> response = PaymentsProcessor::payment(body, paymentsDatabaseWriter, useDefaultService, useFallbackService);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
@@ -1986,17 +2132,19 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPool(5, 10000);
-    sqlite3 *database = connectionPool.getConnectionFromPool();
+    SQLiteConnectionPoolUtils connectionPoolUtils(10, 2000);
+    PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
+
+    sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
     LOGGER::info("Verificando tabelas no banco de dados");
     HealthCheckUtils::init(database);
     PaymentsUtils::init(database);
 
-    connectionPool.returnConnectionToPool(database);
+    connectionPoolUtils.returnConnectionToPool(database);
 
     LOGGER::info("Inicializando serviço de Health Check");
-    HealthCheckServiceThread::init(connectionPool);
+    HealthCheckServiceThread::init(connectionPoolUtils);
 
     cout << endl;
     LOGGER::info("Garnize on Juice iniciado na porta 9999, escutando somente requests POST e GET:");
@@ -2011,8 +2159,8 @@ int main()
             continue;
         }
 
-        thread([new_socket, &connectionPool]()
-               { RequestHandler::handleWith(new_socket, connectionPool); })
+        thread([new_socket, &paymentsDataWriter, &connectionPoolUtils]()
+               { RequestHandler::handleWith(new_socket, paymentsDataWriter, connectionPoolUtils); })
             .detach();
     }
 
