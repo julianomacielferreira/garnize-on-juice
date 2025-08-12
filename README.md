@@ -43,9 +43,12 @@ conhecimento! Esta é a terceira edição do desafio.
 
 ```
 
-### Como compilar e depurar (com gdb)
+### Pré-requisitos
 
-**Nota:** O código deste projeto depende dos serviços de processamento de pagamento que estão em [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor]()
+- ``Docker`` e ``Docker Compose`` instalados na máquina.
+- Serviços de processamento de pagamento do Francisco Zanfranceschi [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor](https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor).
+
+### Como compilar e depurar (com gdb)
 
 Certifique-se de que você tenha a biblioteca **SQLite**, **cURL** e **libuuid** instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
@@ -98,11 +101,6 @@ O arquivo `launch.json` no diretório `.vscode` do projeto já configura a depur
 <sub>As instruções acima foram testadas somente em ambiente Linux.</sub>
 
 ### Como rodar com Docker
-
-Pré-requisitos
-
-- Docker e Docker Compose instalados na máquina
-- Serviços de pagamento do Francisco Zanfranceschi [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor](https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor)
 
 Passo a Passo
 
