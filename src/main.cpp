@@ -554,32 +554,6 @@ public:
 };
 
 /**
- * @brief Representa um registro de HealthCheck.
- */
-struct HealthCheck
-{
-    /**
-     * @brief Nome do serviço.
-     */
-    string service;
-
-    /**
-     * @brief Indica se o serviço está falhando (0 = não, 1 = sim).
-     */
-    int failing;
-
-    /**
-     * @brief Tempo de resposta mínimo do serviço.
-     */
-    int minResponseTime;
-
-    /**
-     * @brief Data e hora da última verificação do serviço.
-     */
-    string lastCheck;
-};
-
-/**
  * @brief Classe responsável por gerenciar a interação o banco de dados SQLite.
  */
 class SQLiteDatabaseUtils
@@ -794,6 +768,32 @@ private:
      * @brief O número atual de threads enfileiradas esperando por uma conexão.
      */
     int queueSize = 0;
+};
+
+/**
+ * @brief Representa um registro de HealthCheck.
+ */
+struct HealthCheck
+{
+    /**
+     * @brief Nome do serviço.
+     */
+    string service;
+
+    /**
+     * @brief Indica se o serviço está falhando (0 = não, 1 = sim).
+     */
+    int failing;
+
+    /**
+     * @brief Tempo de resposta mínimo do serviço.
+     */
+    int minResponseTime;
+
+    /**
+     * @brief Data e hora da última verificação do serviço.
+     */
+    string lastCheck;
 };
 
 /**
@@ -1398,7 +1398,7 @@ public:
      */
     static int getTotalRecords(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND requestedAt >=  ? AND requestedAt <= ?";
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND strftime('%s', requestedAt) >=  strftime('%s', '?') AND strftime('%s', requestedAt) <= strftime('%s', '?')";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -2020,7 +2020,6 @@ public:
         }
         else
         {
-            // Pega uma conexao do pool
             sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
             if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
@@ -2059,10 +2058,6 @@ public:
 
                 LOGGER::info(msg);
 
-                /**
-                 * @todo Criar uma classe que limpa o banco de dados sqlite
-                 * Deve lidar com a concorrência para evitar inconsistências de leitura / escrita simultâneas
-                 */
                 map<string, string> response = {
                     {"status", Constants::OK_RESPONSE},
                     {"response", "{ \"message\": \"" + msg + "\", \"success\": " + (success ? "true" : "false") + "}"}};
@@ -2165,7 +2160,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(5, 2000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(10, 50000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
