@@ -1,4 +1,4 @@
-## Garnize on Juice $${\color{red}[in \space progress]}$$
+## Garnize on Juice (Garnizé com suco) $${\color{red}[in \space progress]}$$
 
 Projeto desenvolvido em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços.
 
@@ -49,15 +49,7 @@ conhecimento! Esta é a terceira edição do desafio.
 Certifique-se de que você tenha a biblioteca SQLite, cURL e libuuid instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
 ```bash
-$ sudo apt-get install libsqlite3-dev
-```
-
-```bash
-$ sudo apt-get install libcurl4-openssl-dev
-```
-
-```bash
-$ sudo apt-get install uuid-dev
+$ sudo apt-get install libsqlite3-dev libcurl4-openssl-dev uuid-dev
 ```
 
 Existe um script bash chamado `compile.sh` bastando torná-lo executável com a instrução `chmod +x compile.sh`.
