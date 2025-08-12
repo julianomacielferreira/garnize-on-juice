@@ -8,8 +8,6 @@ Utilizei muito o conhecimendo do livro [Princípios e Práticas de Programação
 
 Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
-**Nota:** O código deste projeto depende dos serviços de processamento de pagamento que estão em [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor]()
-
 ![Garnize On Juice](static/garnize-on-juice.png)
 
 ### O que é a Rinha do Backend
@@ -46,6 +44,8 @@ conhecimento! Esta é a terceira edição do desafio.
 ```
 
 ### Como compilar e depurar (com gdb)
+
+**Nota:** O código deste projeto depende dos serviços de processamento de pagamento que estão em [https://github.com/zanfranceschi/rinha-de-backend-2025/tree/main/payment-processor]()
 
 Certifique-se de que você tenha a biblioteca SQLite, cURL e libuuid instaladas no seu sistema. Se você estiver usando um sistema baseado em Debian, pode instalar as bibliotecas com o seguinte comando:
 
