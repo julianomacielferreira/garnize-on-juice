@@ -1398,7 +1398,7 @@ public:
      */
     static int getTotalRecords(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND strftime('%s', requestedAt) >=  strftime('%s', '?') AND strftime('%s', requestedAt) <= strftime('%s', '?')";
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
         SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
 
         auto bindParams = [&](sqlite3_stmt *statement)
@@ -1886,7 +1886,8 @@ public:
             return responseMap;
         }
 
-        string from = query.substr(pos + 5);
+        pos = query.find("&to=");
+        string from = query.substr(5, pos - 5);
 
         pos = query.find("to=");
 
@@ -2160,7 +2161,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(10, 50000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(10, 20000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
