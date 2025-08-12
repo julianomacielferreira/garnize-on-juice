@@ -1556,16 +1556,12 @@ private:
 
             sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
-            /**
-             * @todo chamadas para inserir registros de pagamento vindos do servido default e fallback
-             */
-            // Escreva os dados no banco de dados
             PaymentsUtils::insert(database, payment, payment.defaultService, payment.processed);
-            /**
-             * @todo Pensar em essa thread gerenciar os updates dos service health check
-             *
-             */
+
             connectionPoolUtils.returnConnectionToPool(database);
+            /**
+             * @todo Pensar em como essa thread gerenciar os updates dos service health check também ?
+             */
         }
     }
 
@@ -1655,6 +1651,7 @@ public:
         map<string, string> json = JsonParser::parseJson(body);
 
         Payment payment;
+
         /**
          * @todo Descomentar linha abaixo pois o valor vai ser enviado na request
          */
@@ -1663,8 +1660,9 @@ public:
         payment.amount = stod(json.at(Constants::KEY_AMOUNT));
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
-        // AQUI É UM PONTO CRÍTICO, O ALGORITMO DEVE DECIDIR QUAL SERVIÇO CHAMAR, COM PREFERENCIA
-        // AO DEFAULT SEMPRE. O FALLBACK DEVE SER CHAMADO QUANDO ?
+        /**
+         * @todo Débito técnico, o algoritmo deve usar a informação do Delay para escolher qual utilizar
+         */
         if (useDefaultService)
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
@@ -1696,17 +1694,16 @@ public:
                     LOGGER::info("Service /payments 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
 
                     /**
-                     * @todo Adicionar na fila do PaymentsDatabaseWriter
+                     * @todo Débito técnico, código duplicado
                      */
+
+                    // Adiciona na fila do PaymentsDatabaseWriter
                     payment.defaultService = true;
                     payment.processed = (HTTP_RESPONSE_CODE == 200);
                     paymentsDatabaseWriter.addPaymentToQueue(payment);
 
                     if (HTTP_RESPONSE_CODE == 200)
                     {
-                        /**
-                         * @todo Débito técnico, código duplicado
-                         */
                         map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
                         // Inserir o registro de payments processado pelo payments default
@@ -1771,17 +1768,16 @@ public:
                         LOGGER::info("Service /payments 'fallback' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
 
                         /**
-                         * @todo Adicionar na fila do PaymentsDatabaseWriter
+                         * @todo Débito técnico, código duplicado
                          */
+
+                        // Adiciona na fila do PaymentsDatabaseWriter
                         payment.defaultService = false;
                         payment.processed = (HTTP_RESPONSE_CODE == 200);
                         paymentsDatabaseWriter.addPaymentToQueue(payment);
 
                         if (HTTP_RESPONSE_CODE == 200)
                         {
-                            /**
-                             * @todo Débito técnico, código duplicado
-                             */
                             map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
                             // Inserir o registro de payments processado pelo payments default
@@ -1816,6 +1812,8 @@ public:
 
                 /**
                  * @todo Implementar uma lógica para tratar esse cenário
+                 * @todo Quando os dois serviços estão indisponíveis, não pode haver nenhum tipo de pagamento ?
+                 * @todo Refazer a curl request após um timeout ?
                  */
                 LOGGER::info("ALERTA!!! Nenhum serviço está funcionando, tanto o 'default' quanto o 'fallback'");
                 LOGGER::info("Salvar o payment em alguma estrura e reprocessar após 5 segundos");
@@ -2132,7 +2130,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(10, 2000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(5, 2000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
