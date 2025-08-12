@@ -2,7 +2,7 @@
 
 <u>**Garnizé com Suco**</u> é uma solução desenvolvida em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
-O **<u>meu principal objetivo</u>** foi utilizar **C++** com o **<u>mínimo de dependências</u>** (somente do SQLite3) sem necessidade de instalação de outros projetos e libs sem ser a padrão (std) do **C++**. 
+**<u>Meu principal objetivo</u>** foi utilizar **C++** com o **<u>mínimo de dependências</u>** (somente do SQLite3) sem necessidade de instalação de outros projetos e libs que não fizessem parte da biblioteca padrão do **C++** (std). 
 
 Utilizei muito o conhecimendo do livro [Princípios e Práticas de Programação com C++](https://www.amazon.com.br/Princ%C3%ADpios-Pr%C3%A1ticas-Programa%C3%A7%C3%A3o-com-C/dp/8577809587) que comprei há alguns anos.
 
