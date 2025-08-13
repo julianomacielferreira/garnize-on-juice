@@ -827,10 +827,9 @@ public:
      */
     static bool checkDefault()
     {
-
-        HealthCheck healthCheckDefault;
-        healthCheckDefault = getLastHealthCheck("default");
-
+        /**
+         * @todo Retornar o minResponseTime para algoritmo de escolha de servico
+         */
         if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
         {
             LOGGER::info(string("Serviço 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
@@ -848,15 +847,14 @@ public:
      */
     static bool checkFallback()
     {
-
-        // Verifica se o servico "fallback" esta funcionando
-        HealthCheck healthCheckFallBack = getLastHealthCheck("fallback");
-
-        bool success = (healthCheckFallBack.service.size() > 0 && !healthCheckFallBack.failing);
+        /**
+         * @todo Retornar o minResponseTime para algoritmo de escolha de servico
+         */
+        bool success = (healthCheckFallback.service.size() > 0 && !healthCheckFallback.failing);
 
         if (success)
         {
-            LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string(healthCheckFallBack.failing ? "Não" : "Sim"));
+            LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string(healthCheckFallback.failing ? "Não" : "Sim"));
         }
 
         return success;
@@ -907,6 +905,26 @@ public:
             sqlite3_finalize(statement);
         }
 
+        if (success)
+        {
+
+            if (healthCheck.service == "default")
+            {
+
+                healthCheckDefault.service = healthCheck.service;
+                healthCheckDefault.failing = healthCheck.failing;
+                healthCheckDefault.minResponseTime = healthCheck.minResponseTime;
+                healthCheckDefault.lastCheck = healthCheck.lastCheck;
+            }
+            else
+            {
+                healthCheckFallback.service = healthCheck.service;
+                healthCheckFallback.failing = healthCheck.failing;
+                healthCheckFallback.minResponseTime = healthCheck.minResponseTime;
+                healthCheckFallback.lastCheck = healthCheck.lastCheck;
+            }
+        }
+
         SQLiteDatabaseUtils::closeConnection(database);
 
         return success;
@@ -927,7 +945,7 @@ public:
             SELECT service, 
                    failing, 
                    minResponseTime, 
-                   lastCheck 
+                   datetime(lastCheck, 'localtime') AS lastCheck 
               FROM service_health_check 
              WHERE service = ?;
         )";
@@ -975,6 +993,9 @@ public:
     }
 
 private:
+    static HealthCheck healthCheckDefault;
+    static HealthCheck healthCheckFallback;
+
     /**
      * @brief Retorna um conexão com o banco de dados de health check.
      *
@@ -1002,8 +1023,8 @@ private:
                 minResponseTime INTEGER NOT NULL,
                 lastCheck DATETIME NOT NULL
             );
-            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
-            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
+            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 0, DATETIME('now', 'localtime') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+            INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 0, DATETIME('now', 'localtime') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
         )";
 
         char *error;
@@ -1021,9 +1042,15 @@ private:
 
         SQLiteDatabaseUtils::closeConnection(database);
 
+        healthCheckDefault = getLastHealthCheck("default");
+        healthCheckFallback = getLastHealthCheck("fallback");
+
         return success;
     }
 };
+
+HealthCheck HealthCheckUtils::healthCheckDefault;
+HealthCheck HealthCheckUtils::healthCheckFallback;
 
 /**
  * @brief Classe responsável por executar o health check dos serviços em uma thread separada.
@@ -1041,12 +1068,12 @@ public:
     static void check()
     {
 
+        /**
+         * @todo Débito técnico - Código duplicado
+         */
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'default'");
 
-        /**
-         * @todo Código duplicado
-         */
         CURLcode responseCodeDefault;
         string URL_DEFAULT = Constants::PROCESSOR_DEFAULT + Constants::HEALTH_CHECK_ENDPOINT;
         string defaultResponseBuffer;
@@ -1063,26 +1090,21 @@ public:
             }
             else
             {
-                LOGGER::info(string("Dados recebidos: ") + string(defaultResponseBuffer));
+                LOGGER::info(string("Dados recebidos (default): ") + string(defaultResponseBuffer));
 
                 map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
-                HealthCheck healthCheckDefault = HealthCheckUtils::getLastHealthCheck("default");
+                HealthCheck healthCheckDefault;
+                healthCheckDefault.service = "default";
+                healthCheckDefault.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
+                healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
+                healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
 
-                if (healthCheckDefault.service.size() > 0)
-                {
+                LOGGER::info("Atualizando no banco de dados o registro do serviço 'default'");
 
-                    healthCheckDefault.service = "default";
-                    healthCheckDefault.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
-                    healthCheckDefault.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
-                    healthCheckDefault.lastCheck = TimeUtils::getTimestampUTC();
+                HealthCheckUtils::updateHealthRecord(healthCheckDefault);
 
-                    LOGGER::info("Atualizando no banco de dados o registro do serviço 'default'");
-
-                    HealthCheckUtils::updateHealthRecord(healthCheckDefault);
-
-                    LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
-                }
+                LOGGER::info(string("Health ckeck mais atual (default): ") + string(healthCheckDefault.lastCheck));
             }
 
             curl_easy_cleanup(curl_default);
@@ -1090,7 +1112,7 @@ public:
         //--
 
         /**
-         * @todo Código duplicado
+         * @todo Débito técnico - Código duplicado
          */
         cout << endl;
         LOGGER::info("Fazendo request de health check para a o serviço 'fallback'");
@@ -1111,27 +1133,21 @@ public:
             }
             else
             {
-
-                LOGGER::info(string("Dados recebidos: ") + string(fallbackResponseBuffer));
+                LOGGER::info(string("Dados recebidos (fallback): ") + string(fallbackResponseBuffer));
 
                 map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
 
-                HealthCheck healthCheckFallback = HealthCheckUtils::getLastHealthCheck("fallback");
+                HealthCheck healthCheckFallback;
+                healthCheckFallback.service = "fallback";
+                healthCheckFallback.failing = false;
+                healthCheckFallback.minResponseTime = 0;
+                healthCheckFallback.lastCheck = TimeUtils::getTimestampUTC();
 
-                if (healthCheckFallback.service.size() > 0)
-                {
+                LOGGER::info("Atualizando no banco de dados o registro do serviço 'fallback'");
 
-                    healthCheckFallback.service = "fallback";
-                    healthCheckFallback.failing = false;
-                    healthCheckFallback.minResponseTime = 0;
-                    healthCheckFallback.lastCheck = TimeUtils::getTimestampUTC();
+                HealthCheckUtils::updateHealthRecord(healthCheckFallback);
 
-                    LOGGER::info("Atualizando no banco de dados o registro do serviço 'fallback'");
-
-                    HealthCheckUtils::updateHealthRecord(healthCheckFallback);
-
-                    LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallback.lastCheck));
-                }
+                LOGGER::info(string("Health ckeck mais atual (fallback): ") + string(healthCheckFallback.lastCheck));
             }
 
             curl_easy_cleanup(curl_fallback);
@@ -1944,7 +1960,7 @@ public:
      * A função assume que o socket é válido e que a requisição é bem-formada.
      * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
      */
-    static void handleWith(int socket, PaymentsDatabaseWriter &paymentsDatabaseWriter, SQLiteConnectionPoolUtils &connectionPoolUtils)
+    static void handle(int socket, PaymentsDatabaseWriter &paymentsDatabaseWriter, SQLiteConnectionPoolUtils &connectionPoolUtils)
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
@@ -2158,7 +2174,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(10, 20000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(10, 5000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
@@ -2186,7 +2202,7 @@ int main()
         }
 
         thread([new_socket, &paymentsDataWriter, &connectionPoolUtils]()
-               { RequestHandler::handleWith(new_socket, paymentsDataWriter, connectionPoolUtils); })
+               { RequestHandler::handle(new_socket, paymentsDataWriter, connectionPoolUtils); })
             .detach();
     }
 
