@@ -2035,7 +2035,6 @@ public:
         }
         else
         {
-            sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
 
             if (method == "GET" && path.find(Constants::PAYMENTS_SUMMARY_ENDPOINT) == 0)
             {
@@ -2048,7 +2047,13 @@ public:
                 if (queryPos != string::npos)
                 {
                     string query = path.substr(queryPos + 1);
+
+                    /**
+                     * @todo Débito técnico - Não bater mais na base de payments, esta dando lock no banco e não retornando
+                     */
+                    sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
                     map<string, string> response = PaymentsProcessor::paymentSummary(query, database);
+                    connectionPoolUtils.returnConnectionToPool(database);
 
                     string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                     send(socket, headers.c_str(), headers.size(), 0);
@@ -2067,7 +2072,9 @@ public:
                 cout << endl;
                 LOGGER::info("POST request para /purge-payments");
 
+                sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
                 bool success = PaymentsUtils::deleteAllPayments(database);
+                connectionPoolUtils.returnConnectionToPool(database);
 
                 string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
 
@@ -2090,8 +2097,6 @@ public:
                 string response = Constants::NOT_FOUND_RESPONSE;
                 send(socket, response.c_str(), response.size(), 0);
             }
-
-            connectionPoolUtils.returnConnectionToPool(database);
         }
 
         // Fechar a conexão
