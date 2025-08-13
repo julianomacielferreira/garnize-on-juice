@@ -655,7 +655,7 @@ public:
 
             if (connection != nullptr)
             {
-                sqlite3Connections.push(connection);
+                connectionsQueue.push(connection);
             }
             else
             {
@@ -677,12 +677,12 @@ public:
 
         unique_lock<mutex> lock(mutexLock);
 
-        while (sqlite3Connections.empty() && queueSize >= maxQueueSize)
+        while (connectionsQueue.empty() && queueSize >= maxQueueSize)
         {
             conditionToProceed.wait(lock);
         }
 
-        if (sqlite3Connections.empty())
+        if (connectionsQueue.empty())
         {
             sqlite3 *connection = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
 
@@ -694,11 +694,13 @@ public:
                 return nullptr;
             }
 
-            sqlite3Connections.push(connection);
+            connectionsQueue.push(connection);
         }
 
-        sqlite3 *connection = sqlite3Connections.front();
-        sqlite3Connections.pop();
+        sqlite3 *connection = connectionsQueue.front();
+
+        connectionsQueue.pop();
+
         queueSize++;
 
         return connection;
@@ -715,7 +717,7 @@ public:
     {
         lock_guard<mutex> lock(mutexLock);
 
-        sqlite3Connections.push(connection);
+        connectionsQueue.push(connection);
 
         queueSize--;
 
@@ -729,10 +731,12 @@ public:
      */
     ~SQLiteConnectionPoolUtils()
     {
-        while (!sqlite3Connections.empty())
+        while (!connectionsQueue.empty())
         {
-            sqlite3 *connection = sqlite3Connections.front();
-            sqlite3Connections.pop();
+            sqlite3 *connection = connectionsQueue.front();
+
+            connectionsQueue.pop();
+
             SQLiteDatabaseUtils::closeConnection(connection);
         }
     }
@@ -751,7 +755,7 @@ private:
     /**
      * @brief A fila de conexões SQLite.
      */
-    queue<sqlite3 *> sqlite3Connections;
+    queue<sqlite3 *> connectionsQueue;
 
     /**
      * @brief O mutex para sincronizar o acesso ao pool.
@@ -1605,9 +1609,6 @@ private:
             PaymentsUtils::insert(database, payment, payment.defaultService, payment.processed);
 
             connectionPoolUtils.returnConnectionToPool(database);
-            /**
-             * @todo Pensar em como essa thread gerenciar os updates dos service health check também ?
-             */
         }
     }
 
@@ -1742,10 +1743,10 @@ public:
                     /**
                      * @todo Débito técnico, código duplicado
                      */
-
-                    // Adiciona na fila do PaymentsDatabaseWriter
                     payment.defaultService = true;
                     payment.processed = (HTTP_RESPONSE_CODE == 200);
+
+                    // Adiciona na fila do PaymentsDatabaseWriter para ser persistido
                     paymentsDatabaseWriter.addPaymentToQueue(payment);
 
                     if (HTTP_RESPONSE_CODE == 200)
@@ -1816,10 +1817,10 @@ public:
                         /**
                          * @todo Débito técnico, código duplicado
                          */
-
-                        // Adiciona na fila do PaymentsDatabaseWriter
                         payment.defaultService = false;
                         payment.processed = (HTTP_RESPONSE_CODE == 200);
+
+                        // Adiciona na fila do PaymentsDatabaseWriter para ser persistido
                         paymentsDatabaseWriter.addPaymentToQueue(payment);
 
                         if (HTTP_RESPONSE_CODE == 200)
@@ -2180,7 +2181,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(10, 5000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(2, 2000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
