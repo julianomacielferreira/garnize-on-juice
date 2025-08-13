@@ -344,6 +344,7 @@ public:
             curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L); // Ativa a opção NOSIGNAL
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, Constants::CURL_TIMEOUT_MS);
         }
 
         return curl;
@@ -1959,12 +1960,77 @@ public:
         string to = query.substr(pos + 3);
 
         sqlite3 *database = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
-
         PaymentsSummary paymentSummary;
-        paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, from, to);
-        paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, from, to);
-        paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, from, to);
-        paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, from, to);
+
+        /**
+         * @details Sempre buscar primeiro no endpoint e caso não consiga acessar faz uma query no banco
+         */
+        auto calculatePaymentSummary = [&](const string &URL, bool defaultService)
+        {
+            string serviceURL = URL + Constants::PAYMENTS_SUMMARY_ADMIN_ENDPOINT + "?" + query;
+
+            string responseBuffer;
+
+            CURL *curl = CURLUtils::setupCurlForGetRequest(serviceURL, responseBuffer);
+
+            if (curl)
+            {
+                struct curl_slist *headers = NULL;
+                headers = curl_slist_append(headers, "Content-Type: application/json");
+                headers = curl_slist_append(headers, Constants::X_RINHA_TOKEN.c_str());
+                curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+
+                CURLcode responseCode = curl_easy_perform(curl);
+
+                if (responseCode != CURLE_OK)
+                {
+                    LOGGER::error(string("Erro ao fazer curl request para /admin/payments-summary ") + string(defaultService ? "'default'" : "'fallback'") + string(curl_easy_strerror(responseCode)));
+                }
+                else
+                {
+
+                    long HTTP_RESPONSE_CODE = 0;
+                    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
+
+                    LOGGER::info(string("Endpoint /admin/payments-summary ") + string(defaultService ? "'default'" : "'fallback'") + string(" respondeu com o código:  ") + to_string(HTTP_RESPONSE_CODE));
+
+                    if (HTTP_RESPONSE_CODE == 200)
+                    {
+                        map<string, string> jsonResponse = JsonParser::parseJson(responseBuffer);
+
+                        if (defaultService)
+                        {
+                            paymentSummary.defaultStats.totalRequests = stoi(jsonResponse.at("totalRequests"));
+                            paymentSummary.defaultStats.totalAmount = stod(jsonResponse.at("totalAmount"));
+                        }
+                        else
+                        {
+                            paymentSummary.fallbackStats.totalRequests = stoi(jsonResponse.at("totalRequests"));
+                            paymentSummary.fallbackStats.totalAmount = stod(jsonResponse.at("totalAmount"));
+                        }
+                    }
+                    else
+                    {
+                        if (defaultService)
+                        {
+                            paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, from, to);
+                            paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, from, to);
+                        }
+                        else
+                        {
+                            paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, from, to);
+                            paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, from, to);
+                        }
+                    }
+                }
+
+                curl_easy_cleanup(curl);
+                curl_slist_free_all(headers);
+            }
+        };
+
+        calculatePaymentSummary(Constants::PROCESSOR_DEFAULT, true);
+        calculatePaymentSummary(Constants::PROCESSOR_FALLBACK, false);
 
         SQLiteDatabaseUtils::closeConnection(database);
 
