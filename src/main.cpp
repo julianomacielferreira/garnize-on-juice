@@ -1401,31 +1401,12 @@ public:
     {
         string SQL_QUERY = "SELECT SUM(amount) FROM payments_default WHERE strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
 
-        /**
-         * @todo Débito técnico - código duplicado
-         */
-        if (!defaultService)
-        {
-            size_t pos = SQL_QUERY.find("payments_default");
-
-            if (pos != string::npos)
-            {
-                SQL_QUERY.replace(pos, 16, "payments_fallback");
-            }
-        }
-
-        auto bindParams = [&](sqlite3_stmt *statement)
-        {
-            sqlite3_bind_text(statement, 1, from.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(statement, 2, to.c_str(), -1, SQLITE_STATIC);
-        };
-
         auto extractResult = [](sqlite3_stmt *statement)
         {
             return sqlite3_column_double(statement, 0);
         };
 
-        return executeQuery<double>(database, SQL_QUERY, bindParams, extractResult);
+        return executePaymentQuery<double>(database, SQL_QUERY, from, to, defaultService, extractResult);
     }
 
     /**
@@ -1441,31 +1422,12 @@ public:
     {
         string SQL_QUERY = "SELECT COUNT(*) FROM payments_default WHERE strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
 
-        /**
-         * @todo Débito técnico - código duplicado
-         */
-        if (!defaultService)
-        {
-            size_t pos = SQL_QUERY.find("payments_default");
-
-            if (pos != string::npos)
-            {
-                SQL_QUERY.replace(pos, 16, "payments_fallback");
-            }
-        }
-
-        auto bindParams = [&](sqlite3_stmt *statement)
-        {
-            sqlite3_bind_text(statement, 1, from.c_str(), -1, SQLITE_STATIC);
-            sqlite3_bind_text(statement, 2, to.c_str(), -1, SQLITE_STATIC);
-        };
-
         auto extractResult = [](sqlite3_stmt *statement)
         {
             return sqlite3_column_int(statement, 0);
         };
 
-        return executeQuery<int>(database, SQL_QUERY, bindParams, extractResult);
+        return executePaymentQuery<int>(database, SQL_QUERY, from, to, defaultService, extractResult);
     }
 
     /**
@@ -1505,6 +1467,38 @@ public:
     }
 
 private:
+    /**
+     * @brief Executa uma consulta SQL para obter dados de pagamentos.
+     *
+     * @param database A conexão com o banco de dados.
+     * @param query A consulta SQL a ser executada.
+     * @param from A data de início.
+     * @param to A data de fim.
+     * @param defaultService Indica se o serviço padrão deve ser usado.
+     * @param extractResult Função que extrai o resultado da query.
+     * @return T O resultado da consulta.
+     */
+    template <typename T>
+    static T executePaymentQuery(sqlite3 *database, std::string query, const string &from, const string &to, bool defaultService, function<T(sqlite3_stmt *)> extractResult)
+    {
+        if (!defaultService)
+        {
+            size_t pos = query.find("payments_default");
+            if (pos != std::string::npos)
+            {
+                query.replace(pos, 16, "payments_fallback");
+            }
+        }
+
+        auto bindParams = [&](sqlite3_stmt *statement)
+        {
+            sqlite3_bind_text(statement, 1, from.c_str(), -1, SQLITE_STATIC);
+            sqlite3_bind_text(statement, 2, to.c_str(), -1, SQLITE_STATIC);
+        };
+
+        return executeQuery<T>(database, query, bindParams, extractResult);
+    }
+
     /**
      * @brief Executa uma query no banco de dados e retorna o resultado.
      *
