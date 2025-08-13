@@ -127,7 +127,7 @@ public:
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
      */
-    // inline static const string PROCESSOR_DEFAULT = "http://payment-processor-default:8080";
+    // inline static const string PROCESSOR_DEFAULT = getenv("PROCESSOR_DEFAULT");
     inline static const string PROCESSOR_DEFAULT = "http://localhost:8001";
 
     /**
@@ -135,7 +135,7 @@ public:
      *
      * Essa URL é usada como fallback quando o processador de pagamentos padrão não está disponível.
      */
-    // inline static const string PROCESSOR_FALLBACK = "http://payment-processor-fallback:8080";
+    // inline static const string PROCESSOR_FALLBACK =  getenv("PROCESSOR_FALLBACK");
     inline static const string PROCESSOR_FALLBACK = "http://localhost:8002";
 
     /**
