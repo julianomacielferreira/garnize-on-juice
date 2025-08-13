@@ -901,28 +901,29 @@ public:
             {
                 LOGGER::error(string("Erro ao executar a query: ") + string(sqlite3_errmsg(database)));
             }
-
-            sqlite3_finalize(statement);
-        }
-
-        if (success)
-        {
-
-            if (healthCheck.service == "default")
-            {
-
-                healthCheckDefault.service = healthCheck.service;
-                healthCheckDefault.failing = healthCheck.failing;
-                healthCheckDefault.minResponseTime = healthCheck.minResponseTime;
-                healthCheckDefault.lastCheck = healthCheck.lastCheck;
-            }
             else
             {
-                healthCheckFallback.service = healthCheck.service;
-                healthCheckFallback.failing = healthCheck.failing;
-                healthCheckFallback.minResponseTime = healthCheck.minResponseTime;
-                healthCheckFallback.lastCheck = healthCheck.lastCheck;
+                /**
+                 * @todo Débito técnico - Código duplicado
+                 */
+                if (healthCheck.service == "default")
+                {
+
+                    healthCheckDefault.service = healthCheck.service;
+                    healthCheckDefault.failing = healthCheck.failing;
+                    healthCheckDefault.minResponseTime = healthCheck.minResponseTime;
+                    healthCheckDefault.lastCheck = healthCheck.lastCheck;
+                }
+                else
+                {
+                    healthCheckFallback.service = healthCheck.service;
+                    healthCheckFallback.failing = healthCheck.failing;
+                    healthCheckFallback.minResponseTime = healthCheck.minResponseTime;
+                    healthCheckFallback.lastCheck = healthCheck.lastCheck;
+                }
             }
+
+            sqlite3_finalize(statement);
         }
 
         SQLiteDatabaseUtils::closeConnection(database);
