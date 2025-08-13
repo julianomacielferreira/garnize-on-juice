@@ -824,6 +824,15 @@ class HealthCheckUtils
 {
 public:
     /**
+     * @brief Instancia de HealthCheck para verificar se o serviço 'default' está funcionando.
+     */
+    static HealthCheck healthCheckDefault;
+    /**
+     * @brief Instancia de HealthCheck para verificar se o serviço'fallback' está funcionando.
+     */
+    static HealthCheck healthCheckFallback;
+
+    /**
      * @brief Inicializa o health check dos serviços de pagamentos.
      *
      * Esse método cria a tabela de health check se necessário,
@@ -841,43 +850,41 @@ public:
     }
 
     /**
-     * @brief Verifica o serviço 'default' está funcionando.
+     * @brief Escolhe se o serviço 'default' deve ser utilizado.
      *
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkDefault()
+    static bool useDefault()
     {
-        /**
-         * @todo Retornar o minResponseTime para algoritmo de escolha de servico
-         */
-        if (healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing)
-        {
-            LOGGER::info(string("Serviço 'default' está funcionando: ") + string(string(healthCheckDefault.failing ? "Não" : "Sim")));
+        LOGGER::info(string("Serviço 'default' está funcionando: ") + string((healthCheckDefault.service.size() > 0 && !healthCheckDefault.failing) ? "Sim" : "Não"));
 
-            return true;
+        bool isToUse = !healthCheckDefault.failing;
+
+        if (isToUse && !healthCheckFallback.failing)
+        {
+            isToUse = (healthCheckDefault.minResponseTime <= healthCheckFallback.minResponseTime);
         }
 
-        return false;
+        return isToUse;
     }
 
     /**
-     * @brief Verifica o serviço 'fallback' está funcionando.
+     * @brief Escolhe se o serviço 'fallback' deve ser utilizado.
      *
      * @return true se o serviço está OK, false caso contrário.
      */
-    static bool checkFallback()
+    static bool useFallback()
     {
-        /**
-         * @todo Retornar o minResponseTime para algoritmo de escolha de servico
-         */
-        bool success = (healthCheckFallback.service.size() > 0 && !healthCheckFallback.failing);
+        LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string((healthCheckFallback.service.size() > 0 && !healthCheckFallback.failing) ? "Sim" : "Não"));
 
-        if (success)
+        bool isToUse = !healthCheckFallback.failing;
+
+        if (isToUse && !healthCheckDefault.failing)
         {
-            LOGGER::info(string("Serviço 'fallback' está funcionando: ") + string(healthCheckFallback.failing ? "Não" : "Sim"));
+            isToUse = (healthCheckFallback.minResponseTime <= healthCheckDefault.minResponseTime);
         }
 
-        return success;
+        return isToUse;
     }
 
     /**
@@ -923,24 +930,15 @@ public:
             }
             else
             {
-                /**
-                 * @todo Débito técnico - Código duplicado
-                 */
-                if (healthCheck.service == "default")
+                auto setHealthCheckFor = [&](HealthCheck &healthcheckService)
                 {
+                    healthcheckService.service = healthCheck.service;
+                    healthcheckService.failing = healthCheck.failing;
+                    healthcheckService.minResponseTime = healthCheck.minResponseTime;
+                    healthcheckService.lastCheck = healthCheck.lastCheck;
+                };
 
-                    healthCheckDefault.service = healthCheck.service;
-                    healthCheckDefault.failing = healthCheck.failing;
-                    healthCheckDefault.minResponseTime = healthCheck.minResponseTime;
-                    healthCheckDefault.lastCheck = healthCheck.lastCheck;
-                }
-                else
-                {
-                    healthCheckFallback.service = healthCheck.service;
-                    healthCheckFallback.failing = healthCheck.failing;
-                    healthCheckFallback.minResponseTime = healthCheck.minResponseTime;
-                    healthCheckFallback.lastCheck = healthCheck.lastCheck;
-                }
+                setHealthCheckFor((healthCheck.service == "default") ? healthCheckDefault : healthCheckFallback);
             }
 
             sqlite3_finalize(statement);
@@ -1014,9 +1012,6 @@ public:
     }
 
 private:
-    static HealthCheck healthCheckDefault;
-    static HealthCheck healthCheckFallback;
-
     /**
      * @brief Retorna um conexão com o banco de dados de health check.
      *
@@ -1703,11 +1698,9 @@ public:
      *
      * @param body Corpo da requisição.
      * @param paymentsDatabaseWriter Classe que gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
-     * @param useDefaultService Flag que indica se o servico 'default' é pra ser utilizado.
-     * @param useFallbackService Flag que indica se o servico 'default' é pra ser utilizado.
      * @return Resposta HTTP.
      */
-    static map<string, string> payment(const string &body, PaymentsDatabaseWriter &paymentsDatabaseWriter, bool useDefaultService, bool useFallbackService)
+    static map<string, string> payment(const string &body, PaymentsDatabaseWriter &paymentsDatabaseWriter)
     {
         Timer timer;
 
@@ -1753,6 +1746,14 @@ public:
         /**
          * @todo Débito técnico, o algoritmo deve usar a informação do Delay para escolher qual utilizar
          */
+        bool useDefaultService = HealthCheckUtils::useDefault();
+        bool useFallbackService = false;
+
+        if (!useDefaultService)
+        {
+            useFallbackService = HealthCheckUtils::useFallback();
+        }
+
         if (useDefaultService)
         {
             LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
@@ -1963,7 +1964,7 @@ public:
         PaymentsSummary paymentSummary;
 
         /**
-         * @details Sempre buscar primeiro no endpoint e caso não consiga acessar faz uma query no banco
+         * @details Sempre buscar primeiro no endpoint e caso não consiga, recuperar da base local (evitando phantom reads)
          */
         auto calculatePaymentSummary = [&](const string &URL, bool defaultService)
         {
@@ -2119,19 +2120,8 @@ public:
             if (bodyPos != string::npos)
             {
 
-                /**
-                 * @todo Débito técnico - Remover esse código, pensar em um lugar apropriado
-                 */
-                bool useDefaultService = HealthCheckUtils::checkDefault();
-                bool useFallbackService = false;
-
-                if (!useDefaultService)
-                {
-                    HealthCheckUtils::checkFallback();
-                }
-
                 string body = request.substr(bodyPos + 4);
-                map<string, string> response = PaymentsProcessor::payment(body, paymentsDatabaseWriter, useDefaultService, useFallbackService);
+                map<string, string> response = PaymentsProcessor::payment(body, paymentsDatabaseWriter);
 
                 string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                 send(socket, headers.c_str(), headers.size(), 0);
