@@ -1156,8 +1156,8 @@ public:
 
                 HealthCheck healthCheckFallback;
                 healthCheckFallback.service = "fallback";
-                healthCheckFallback.failing = false;
-                healthCheckFallback.minResponseTime = 0;
+                healthCheckFallback.failing = (jsonResponse.at("failing") == "true" || jsonResponse.at("failing") == "1");
+                healthCheckFallback.minResponseTime = stoi(jsonResponse.at("minResponseTime"));
                 healthCheckFallback.lastCheck = TimeUtils::getTimestampUTC();
 
                 LOGGER::info("Atualizando no banco de dados o registro do serviço 'fallback'");
