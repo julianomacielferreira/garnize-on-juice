@@ -1310,7 +1310,13 @@ public:
                 requestedAt DATETIME NOT NULL,
                 defaultService TINYINT NOT NULL,
                 processed TINYINT NOT NULL
-            );           
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_requestedAt ON payments (requestedAt);
+            
+            CREATE VIEW IF NOT EXISTS payments_default AS SELECT correlationId, amount, requestedAt FROM payments WHERE processed = 1 AND defaultService = 1;
+
+            CREATE VIEW IF NOT EXISTS payments_fallback AS SELECT correlationId, amount, requestedAt FROM payments WHERE processed = 1 AND defaultService = 0;
         )";
 
         char *error;
@@ -1388,8 +1394,20 @@ public:
      */
     static double getTotalAmount(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT SUM(amount) FROM payments WHERE processed = 1 AND requestedAt >=  ? AND requestedAt <= ?";
-        SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
+        string SQL_QUERY = "SELECT SUM(amount) FROM payments_default WHERE strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
+
+        /**
+         * @todo Débito técnico - código duplicado
+         */
+        if (!defaultService)
+        {
+            size_t pos = SQL_QUERY.find("payments_default");
+
+            if (pos != string::npos)
+            {
+                SQL_QUERY.replace(pos, 16, "payments_fallback");
+            }
+        }
 
         auto bindParams = [&](sqlite3_stmt *statement)
         {
@@ -1416,8 +1434,20 @@ public:
      */
     static int getTotalRecords(sqlite3 *database, bool defaultService, const string &from, const string &to)
     {
-        string SQL_QUERY = "SELECT COUNT(*) FROM payments WHERE processed = 1 AND strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
-        SQL_QUERY += " AND defaultService = " + string(defaultService ? "1" : "0");
+        string SQL_QUERY = "SELECT COUNT(*) FROM payments_default WHERE strftime('%s', requestedAt) >=  strftime('%s', ?) AND strftime('%s', requestedAt) <= strftime('%s', ?)";
+
+        /**
+         * @todo Débito técnico - código duplicado
+         */
+        if (!defaultService)
+        {
+            size_t pos = SQL_QUERY.find("payments_default");
+
+            if (pos != string::npos)
+            {
+                SQL_QUERY.replace(pos, 16, "payments_fallback");
+            }
+        }
 
         auto bindParams = [&](sqlite3_stmt *statement)
         {
@@ -2041,7 +2071,7 @@ public:
             {
 
                 cout << endl;
-                LOGGER::info("GET request para /payments-summary");
+                LOGGER::info("GET request para /payments-summary " + path);
 
                 size_t queryPos = path.find("?");
 

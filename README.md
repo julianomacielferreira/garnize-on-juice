@@ -292,6 +292,12 @@ CREATE TABLE IF NOT EXISTS payments (
                 processed TINYINT NOT NULL
             );
 
+CREATE INDEX IF NOT EXISTS idx_requestedAt ON payments (requestedAt);
+
+CREATE VIEW IF NOT EXISTS payments_default AS SELECT correlationId, amount, requestedAt FROM payments WHERE processed = 1 AND defaultService = 1;
+
+CREATE VIEW IF NOT EXISTS payments_fallback AS SELECT correlationId, amount, requestedAt FROM payments WHERE processed = 1 AND defaultService = 0;
+
 -- Pode ser criado, se houver necessidade de realizar buscas pela coluna
 CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
 ```
