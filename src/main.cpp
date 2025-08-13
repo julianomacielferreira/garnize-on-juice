@@ -824,15 +824,6 @@ class HealthCheckUtils
 {
 public:
     /**
-     * @brief Instancia de HealthCheck para verificar se o serviço 'default' está funcionando.
-     */
-    static HealthCheck healthCheckDefault;
-    /**
-     * @brief Instancia de HealthCheck para verificar se o serviço'fallback' está funcionando.
-     */
-    static HealthCheck healthCheckFallback;
-
-    /**
      * @brief Inicializa o health check dos serviços de pagamentos.
      *
      * Esse método cria a tabela de health check se necessário,
@@ -860,10 +851,10 @@ public:
 
         bool isToUse = !healthCheckDefault.failing;
 
-        if (isToUse && !healthCheckFallback.failing)
-        {
-            isToUse = (healthCheckDefault.minResponseTime <= healthCheckFallback.minResponseTime);
-        }
+        // if (isToUse && !healthCheckFallback.failing)
+        // {
+        //     isToUse = (healthCheckDefault.minResponseTime <= healthCheckFallback.minResponseTime);
+        // }
 
         return isToUse;
     }
@@ -879,10 +870,10 @@ public:
 
         bool isToUse = !healthCheckFallback.failing;
 
-        if (isToUse && !healthCheckDefault.failing)
-        {
-            isToUse = (healthCheckFallback.minResponseTime <= healthCheckDefault.minResponseTime);
-        }
+        // if (isToUse && !healthCheckDefault.failing)
+        // {
+        //     isToUse = (healthCheckFallback.minResponseTime <= healthCheckDefault.minResponseTime);
+        // }
 
         return isToUse;
     }
@@ -1012,6 +1003,16 @@ public:
     }
 
 private:
+    /**
+     * @brief Instancia de HealthCheck para verificar se o serviço 'default' está funcionando.
+     */
+    static HealthCheck healthCheckDefault;
+
+    /**
+     * @brief Instancia de HealthCheck para verificar se o serviço'fallback' está funcionando.
+     */
+    static HealthCheck healthCheckFallback;
+
     /**
      * @brief Retorna um conexão com o banco de dados de health check.
      *
@@ -1754,50 +1755,49 @@ public:
             useFallbackService = HealthCheckUtils::useFallback();
         }
 
-        if (useDefaultService)
+        auto sendPaymentRequestToFn = [&](bool useDefault, const string &URL)
         {
-            LOGGER::info("Usando 'default' payment service: " + Constants::PROCESSOR_DEFAULT);
+            LOGGER::info(string("Usando") + string(useDefault ? " 'default' " : " 'fallback' ") + string("payment service: ") + URL);
 
             string payload = PaymentsJSONConverter::toJson(payment);
-            string defaultResponseBuffer;
-            string URL = Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT;
+            string responseBuffer;
 
-            CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, defaultResponseBuffer);
+            CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, responseBuffer);
 
             if (curl)
             {
+
                 struct curl_slist *headers = NULL;
                 headers = curl_slist_append(headers, "Content-Type: application/json");
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
-                // Faz request para o servico 'default'
+                // Faz request para o servico
                 CURLcode responseCode = curl_easy_perform(curl);
 
                 if (responseCode != CURLE_OK)
                 {
-                    LOGGER::error(string("Erro ao fazer curl request para /payments 'default': ") + string(curl_easy_strerror(responseCode)));
+                    LOGGER::error(string("Erro ao fazer curl request para /payments") + string(useDefault ? " 'default' : " : " 'fallback' : ") + string(curl_easy_strerror(responseCode)));
                 }
                 else
                 {
+
                     long HTTP_RESPONSE_CODE = 0;
                     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
+                    bool requestOK = (HTTP_RESPONSE_CODE == 200);
 
-                    LOGGER::info("Service /payments 'default' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
+                    LOGGER::info(string("Service /payments") + string(useDefault ? " 'default' " : " 'fallback' ") + string("respondeu com o código:  ") + to_string(HTTP_RESPONSE_CODE));
 
-                    /**
-                     * @todo Débito técnico, código duplicado
-                     */
-                    payment.defaultService = true;
-                    payment.processed = (HTTP_RESPONSE_CODE == 200);
+                    payment.defaultService = useDefault;
+                    payment.processed = requestOK;
 
                     // Adiciona na fila do PaymentsDatabaseWriter para ser persistido
                     paymentsDatabaseWriter.addPaymentToQueue(payment);
 
-                    if (HTTP_RESPONSE_CODE == 200)
+                    if (requestOK)
                     {
-                        map<string, string> jsonResponse = JsonParser::parseJson(defaultResponseBuffer);
 
-                        // Inserir o registro de payments processado pelo payments default
+                        map<string, string> jsonResponse = JsonParser::parseJson(responseBuffer);
+
                         stringstream stringBuilder;
                         stringBuilder << "Inserindo Payment(correlationId=";
                         stringBuilder << payment.correlationId;
@@ -1805,8 +1805,10 @@ public:
                         stringBuilder << to_string(payment.amount);
                         stringBuilder << ", requestedAt=";
                         stringBuilder << payment.requestedAt;
-                        stringBuilder << ", defaultService=true, processed=";
-                        stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
+                        stringBuilder << ", defaultService=";
+                        stringBuilder << string(useDefault ? "true" : "false");
+                        stringBuilder << ", processed=";
+                        stringBuilder << to_string(requestOK);
                         stringBuilder << ")";
 
                         LOGGER::info(stringBuilder.str());
@@ -1824,79 +1826,17 @@ public:
                 curl_easy_cleanup(curl);
                 curl_slist_free_all(headers);
             }
+        };
+
+        if (useDefaultService)
+        {
+            sendPaymentRequestToFn(true, string(Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT));
         }
         else
         {
             if (useFallbackService)
             {
-                LOGGER::info("Usando 'fallback' payment service:  " + Constants::PROCESSOR_FALLBACK);
-
-                string payload = PaymentsJSONConverter::toJson(payment);
-                string URL = Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT;
-                string fallbackResponseBuffer;
-
-                CURL *curl = CURLUtils::setupCurlForPostRequest(URL, payload, fallbackResponseBuffer);
-
-                if (curl)
-                {
-                    struct curl_slist *headers = NULL;
-                    headers = curl_slist_append(headers, "Content-Type: application/json");
-                    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-
-                    // Faz request para o servico 'fallback'
-                    CURLcode responseCode = curl_easy_perform(curl);
-
-                    if (responseCode != CURLE_OK)
-                    {
-                        LOGGER::error(string("Erro ao fazer curl request para /payments 'fallback': ") + string(curl_easy_strerror(responseCode)));
-                    }
-                    else
-                    {
-
-                        long HTTP_RESPONSE_CODE = 0;
-                        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &HTTP_RESPONSE_CODE);
-
-                        LOGGER::info("Service /payments 'fallback' respondeu com o código:  " + to_string(HTTP_RESPONSE_CODE));
-
-                        /**
-                         * @todo Débito técnico, código duplicado
-                         */
-                        payment.defaultService = false;
-                        payment.processed = (HTTP_RESPONSE_CODE == 200);
-
-                        // Adiciona na fila do PaymentsDatabaseWriter para ser persistido
-                        paymentsDatabaseWriter.addPaymentToQueue(payment);
-
-                        if (HTTP_RESPONSE_CODE == 200)
-                        {
-                            map<string, string> jsonResponse = JsonParser::parseJson(fallbackResponseBuffer);
-
-                            // Inserir o registro de payments processado pelo payments default
-                            stringstream stringBuilder;
-                            stringBuilder << "Inserindo Payment(correlationId=";
-                            stringBuilder << payment.correlationId;
-                            stringBuilder << ", amount=";
-                            stringBuilder << to_string(payment.amount);
-                            stringBuilder << ", requestedAt=";
-                            stringBuilder << payment.requestedAt;
-                            stringBuilder << ", defaultService=false, processed="; // Unica coisa eu muda do default
-                            stringBuilder << to_string(HTTP_RESPONSE_CODE == 200);
-                            stringBuilder << ")";
-
-                            LOGGER::info(stringBuilder.str());
-
-                            responseMap["status"] = Constants::CREATED_RESPONSE;
-                            responseMap["response"] = "{ \"message\":\"" + jsonResponse.at("message") + "\", \"payment\": " + PaymentsJSONConverter::toJson(payment) + "}";
-                        }
-                        else
-                        {
-                            responseMap["status"] = Constants::BAD_REQUEST_RESPONSE;
-                        }
-                    }
-
-                    curl_easy_cleanup(curl);
-                    curl_slist_free_all(headers);
-                }
+                sendPaymentRequestToFn(false, string(Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT));
             }
             else
             {
@@ -1964,9 +1904,10 @@ public:
         PaymentsSummary paymentSummary;
 
         /**
+         * @todo Débito técnico - Não pode consultar o backend
          * @details Sempre buscar primeiro no endpoint e caso não consiga, recuperar da base local (evitando phantom reads)
          */
-        auto calculatePaymentSummary = [&](const string &URL, bool defaultService)
+        auto sendPaymentsSummaryRequestFn = [&](const string &URL, bool defaultService)
         {
             string serviceURL = URL + Constants::PAYMENTS_SUMMARY_ADMIN_ENDPOINT + "?" + query;
 
@@ -2030,8 +1971,8 @@ public:
             }
         };
 
-        calculatePaymentSummary(Constants::PROCESSOR_DEFAULT, true);
-        calculatePaymentSummary(Constants::PROCESSOR_FALLBACK, false);
+        sendPaymentsSummaryRequestFn(Constants::PROCESSOR_DEFAULT, true);
+        sendPaymentsSummaryRequestFn(Constants::PROCESSOR_FALLBACK, false);
 
         SQLiteDatabaseUtils::closeConnection(database);
 
