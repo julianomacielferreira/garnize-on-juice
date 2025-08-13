@@ -64,12 +64,12 @@ public:
     /**
      * @brief Nome do arquivo de banco de dados SQLite para salvar pagamentos.
      */
-    inline static const string DATABASE_PAYMENTS = "garnize-payments.db";
+    inline static const string DATABASE_PAYMENTS = "database/garnize-payments.sqlite";
 
     /**
      * @brief Nome do arquivo de banco de dados SQLite para manter os dados de health check.
      */
-    inline static const string DATABASE_HEALTH_CHECK = "garnize-health-check.db";
+    inline static const string DATABASE_HEALTH_CHECK = "database/garnize-health-check.sqlite";
 
     /**
      * @brief Resposta HTTP padrão para requisições inválidas (400 Bad Request).
@@ -596,6 +596,11 @@ public:
 
             return nullptr;
         }
+
+        /**
+         * @todo Timeout para tentar evitar erro de database is locked
+         */
+        sqlite3_busy_timeout(database, 2000);
 
         LOGGER::info("Abriu conexão com o banco de dados.");
 
