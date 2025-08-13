@@ -57,9 +57,9 @@ public:
      * @brief Tamanho do buffer para leitura de dados em bytes.
      *
      * Essa constante define o tamanho do buffer usado para ler dados de uma conexão de rede.
-     * O valor é de 512 bytes.
+     * O valor é de 256 bytes.
      */
-    static const uint16_t BUFFER_SIZE = 512;
+    static const uint16_t BUFFER_SIZE = 256;
 
     /**
      * @brief Nome do arquivo de banco de dados SQLite para salvar pagamentos.
@@ -291,7 +291,7 @@ public:
     }
 
     /**
-     * @brief Retorna um ponteiro CURL para a URL com timeout de 7 segundos.
+     * @brief Retorna um ponteiro CURL para a URL com timeout de 1500 millisegundos.
      *
      * @param URL O endereço que será chamado
      * @param payload O payload da requisição em formato JSON.
@@ -311,7 +311,7 @@ public:
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
-            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 7000L);
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1500L);
         }
 
         return curl;
@@ -600,7 +600,7 @@ public:
         /**
          * @todo Timeout para tentar evitar erro de database is locked
          */
-        sqlite3_busy_timeout(database, 2000);
+        sqlite3_busy_timeout(database, 1500);
 
         LOGGER::info("Abriu conexão com o banco de dados.");
 
@@ -664,7 +664,7 @@ public:
             }
             else
             {
-                LOGGER::error("Erro ao criar pool de conexões");
+                LOGGER::error("Erro ao criar conexão no pool");
             }
         }
     }
@@ -1433,12 +1433,12 @@ public:
     /**
      * @brief Deleta todos os registros da tabela payments.
      *
-     * @param database Ponteiro para o objeto sqlite3.
      * @return bool Indica se a operação foi bem-sucedida.
      */
-    static bool deleteAllPayments(sqlite3 *database)
+    static bool deleteAllPayments()
     {
-        sqlite3_stmt *statement;
+
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
 
         // Erro ao abrir a conexão
         if (database == nullptr)
@@ -1447,6 +1447,7 @@ public:
         }
 
         // Preparar a query
+        sqlite3_stmt *statement;
         const char *SQL_QUERY = "DELETE FROM payments";
 
         int responseCode = sqlite3_prepare_v2(database, SQL_QUERY, -1, &statement, 0);
@@ -1462,6 +1463,8 @@ public:
 
         // Finalizar a query e fechar a conexão
         sqlite3_finalize(statement);
+
+        SQLiteDatabaseUtils::closeConnection(database);
 
         return (responseCode == SQLITE_DONE);
     }
@@ -1909,11 +1912,10 @@ public:
      * no período especificado e retorna a resposta.
      *
      * @param query Query string da requisição.
-     * @param database Ponteiro para o objeto sqlite3.
      *
      * @return Um mapa contendo o código e a resposta.
      */
-    static map<string, string> paymentSummary(const string &query, sqlite3 *database)
+    static map<string, string> payments_summary(const string &query)
     {
         Timer timer;
 
@@ -1946,11 +1948,15 @@ public:
 
         string to = query.substr(pos + 3);
 
+        sqlite3 *database = SQLiteDatabaseUtils::openConnection(Constants::DATABASE_PAYMENTS);
+
         PaymentsSummary paymentSummary;
         paymentSummary.defaultStats.totalRequests = PaymentsUtils::getTotalRecords(database, true, from, to);
         paymentSummary.defaultStats.totalAmount = PaymentsUtils::getTotalAmount(database, true, from, to);
         paymentSummary.fallbackStats.totalRequests = PaymentsUtils::getTotalRecords(database, false, from, to);
         paymentSummary.fallbackStats.totalAmount = PaymentsUtils::getTotalAmount(database, false, from, to);
+
+        SQLiteDatabaseUtils::closeConnection(database);
 
         // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
@@ -1977,7 +1983,6 @@ public:
      *
      * @param socket O socket que recebeu a requisição.
      * @param paymentsDatabaseWriter Classe que gerencia a escrita de pagamentos no banco de dados de forma segura e eficiente.
-     * @param connectionPoolUtils Classe utilitária que gerencia as conexões
      *
      * @details
      * A função segue os seguintes passos:
@@ -1991,7 +1996,7 @@ public:
      * A função assume que o socket é válido e que a requisição é bem-formada.
      * Se a requisição for inválida, a função envia uma resposta de erro ao cliente.
      */
-    static void handle(int socket, PaymentsDatabaseWriter &paymentsDatabaseWriter, SQLiteConnectionPoolUtils &connectionPoolUtils)
+    static void handle(int socket, PaymentsDatabaseWriter &paymentsDatabaseWriter)
     {
 
         // Define o tamanho do buffer para ler dados da conexão de rede.
@@ -2078,12 +2083,7 @@ public:
                 {
                     string query = path.substr(queryPos + 1);
 
-                    /**
-                     * @todo Débito técnico - Não bater mais na base de payments, esta dando lock no banco e não retornando
-                     */
-                    sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
-                    map<string, string> response = PaymentsProcessor::paymentSummary(query, database);
-                    connectionPoolUtils.returnConnectionToPool(database);
+                    map<string, string> response = PaymentsProcessor::payments_summary(query);
 
                     string headers = response.at("status") + Constants::CONTENT_TYPE_APPLICATION_JSON + to_string(response.at("response").size()) + "\r\n\r\n";
                     send(socket, headers.c_str(), headers.size(), 0);
@@ -2102,9 +2102,7 @@ public:
                 cout << endl;
                 LOGGER::info("POST request para /purge-payments");
 
-                sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
-                bool success = PaymentsUtils::deleteAllPayments(database);
-                connectionPoolUtils.returnConnectionToPool(database);
+                bool success = PaymentsUtils::deleteAllPayments();
 
                 string msg = "Todas as tabelas do banco foram limpas! Eu espero que você saiba o que acabou de fazer.";
 
@@ -2210,7 +2208,7 @@ int main()
         return EXIT_FAILURE;
     };
 
-    SQLiteConnectionPoolUtils connectionPoolUtils(2, 2000);
+    SQLiteConnectionPoolUtils connectionPoolUtils(2, 5000);
     PaymentsDatabaseWriter paymentsDataWriter(connectionPoolUtils);
 
     sqlite3 *database = connectionPoolUtils.getConnectionFromPool();
@@ -2238,7 +2236,7 @@ int main()
         }
 
         thread([new_socket, &paymentsDataWriter, &connectionPoolUtils]()
-               { RequestHandler::handle(new_socket, paymentsDataWriter, connectionPoolUtils); })
+               { RequestHandler::handle(new_socket, paymentsDataWriter); })
             .detach();
     }
 
