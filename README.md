@@ -280,9 +280,9 @@ O SQL para criar as tabelas está chumbado no código:
                 lastCheck DATETIME NOT NULL
             );
 
-INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
+INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'default', 0, 0, DATETIME('now', 'localtime') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'default');
 
-INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 100, DATETIME('now') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
+INSERT INTO `service_health_check` (`service`, `failing`, `minResponseTime`, `lastCheck`) SELECT 'fallback', 0, 0, DATETIME('now', 'localtime') WHERE NOT EXISTS (SELECT 1 FROM service_health_check WHERE service = 'fallback');
 
 CREATE TABLE IF NOT EXISTS payments (
                 correlationId TEXT NOT NULL,
@@ -291,6 +291,7 @@ CREATE TABLE IF NOT EXISTS payments (
                 defaultService TINYINT NOT NULL,
                 processed TINYINT NOT NULL
             );
+
 -- Pode ser criado, se houver necessidade de realizar buscas pela coluna
 CREATE INDEX IF NOT EXISTS idx_correlationId ON payments (correlationId);
 ```
