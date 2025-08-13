@@ -851,10 +851,10 @@ public:
 
         bool isToUse = !healthCheckDefault.failing;
 
-        // if (isToUse && !healthCheckFallback.failing)
-        // {
-        //     isToUse = (healthCheckDefault.minResponseTime <= healthCheckFallback.minResponseTime);
-        // }
+        if (isToUse && !healthCheckFallback.failing && (healthCheckFallback.minResponseTime < healthCheckDefault.minResponseTime))
+        {
+            isToUse = false;
+        }
 
         return isToUse;
     }
@@ -870,10 +870,10 @@ public:
 
         bool isToUse = !healthCheckFallback.failing;
 
-        // if (isToUse && !healthCheckDefault.failing)
-        // {
-        //     isToUse = (healthCheckFallback.minResponseTime <= healthCheckDefault.minResponseTime);
-        // }
+        if (isToUse && !healthCheckDefault.failing && (healthCheckDefault.minResponseTime < healthCheckFallback.minResponseTime))
+        {
+            isToUse = false;
+        }
 
         return isToUse;
     }
