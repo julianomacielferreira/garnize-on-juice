@@ -62,6 +62,16 @@ public:
     static const uint16_t BUFFER_SIZE = 256;
 
     /**
+     * @brief Timeout das requisições cURL.
+     */
+    static const uint16_t CURL_TIMEOUT_MS = 7000L;
+
+    /**
+     * @brief Timeout do sqlite3 para evitar erro de database is locked.
+     */
+    static const uint16_t SQLITE_BUSY_TIMEOUT_MS = 2000;
+
+    /**
      * @brief Nome do arquivo de banco de dados SQLite para salvar pagamentos.
      */
     inline static const string DATABASE_PAYMENTS = "database/garnize-payments.sqlite";
@@ -311,7 +321,7 @@ public:
             curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, payload.length());
             curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CURLUtils::readCallback);
             curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
-            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, 1500L);
+            curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT_MS, Constants::CURL_TIMEOUT_MS);
         }
 
         return curl;
@@ -600,7 +610,7 @@ public:
         /**
          * @todo Timeout para tentar evitar erro de database is locked
          */
-        sqlite3_busy_timeout(database, 1500);
+        sqlite3_busy_timeout(database, Constants::SQLITE_BUSY_TIMEOUT_MS);
 
         LOGGER::info("Abriu conexão com o banco de dados.");
 
