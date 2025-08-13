@@ -21,5 +21,5 @@ garnize_on_juice
 garnize_on_juice_debug
 
 # Local database
-garnize-payments.db
-garnize-health-check.db
+database/garnize-payments.sqlite
+database/garnize-health-check.sqlite
