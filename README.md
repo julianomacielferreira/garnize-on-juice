@@ -8,12 +8,11 @@ Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
-### O máximo que a solução pode processar fica em torno de 15K req / minuto
+### O máximo que a solução pode processar fica em 15000 requests / minuto
 
-Abaixo está um vídeo que mostra o limite máximo de requisições e o valor total máximo que pode ser processado pela solução no cenário de testes do k6.
+Abaixo está um vídeo que mostra o limite máximo de requisições e o valor total máximo que pode ser processado pela solução no cenário de testes do k6 _**quando nenhum serviço falha ou tem algum delay**_.
 
 ![](static/video.gif)
-
 
 ### O que é a Rinha do Backend
 

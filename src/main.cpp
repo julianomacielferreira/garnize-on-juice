@@ -32,6 +32,7 @@
 #include <thread>
 #include <queue>
 #include <mutex>
+#include <csignal>
 #include <condition_variable>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -137,16 +138,16 @@ public:
      *
      * Essa URL é usada como padrão quando não há outra configuração específica.
      */
-    // inline static const string PROCESSOR_DEFAULT = getenv("PROCESSOR_DEFAULT");
-    inline static const string PROCESSOR_DEFAULT = "http://localhost:8001";
+    inline static const string PROCESSOR_DEFAULT = getenv("PROCESSOR_DEFAULT");
+    // inline static const string PROCESSOR_DEFAULT = "http://localhost:8001";
 
     /**
      * @brief URL de fallback do processador de pagamentos.
      *
      * Essa URL é usada como fallback quando o processador de pagamentos padrão não está disponível.
      */
-    // inline static const string PROCESSOR_FALLBACK =  getenv("PROCESSOR_FALLBACK");
-    inline static const string PROCESSOR_FALLBACK = "http://localhost:8002";
+    inline static const string PROCESSOR_FALLBACK =  getenv("PROCESSOR_FALLBACK");
+    // inline static const string PROCESSOR_FALLBACK = "http://localhost:8002";
 
     /**
      * @brief Endpoint para operações de pagamento.
@@ -1744,18 +1745,7 @@ public:
         payment.amount = stod(json.at(Constants::KEY_AMOUNT));
         payment.requestedAt = TimeUtils::getTimestampUTC();
 
-        /**
-         * @todo Débito técnico, o algoritmo deve usar a informação do Delay para escolher qual utilizar
-         */
-        bool useDefaultService = HealthCheckUtils::useDefault();
-        bool useFallbackService = false;
-
-        if (!useDefaultService)
-        {
-            useFallbackService = HealthCheckUtils::useFallback();
-        }
-
-        auto sendPaymentRequestToFn = [&](bool useDefault, const string &URL)
+        auto sendPaymentRequestToFn = [&](bool useDefault, const string &URL, CURLcode &responseCode)
         {
             LOGGER::info(string("Usando") + string(useDefault ? " 'default' " : " 'fallback' ") + string("payment service: ") + URL);
 
@@ -1766,13 +1756,12 @@ public:
 
             if (curl)
             {
-
                 struct curl_slist *headers = NULL;
                 headers = curl_slist_append(headers, "Content-Type: application/json");
                 curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
 
                 // Faz request para o servico
-                CURLcode responseCode = curl_easy_perform(curl);
+                responseCode = curl_easy_perform(curl);
 
                 if (responseCode != CURLE_OK)
                 {
@@ -1828,26 +1817,27 @@ public:
             }
         };
 
+        CURLcode responseCode;
+        bool useDefaultService = HealthCheckUtils::useDefault();
+        bool useFallbackService = !useDefaultService ? HealthCheckUtils::useFallback() : false;
+
         if (useDefaultService)
         {
-            sendPaymentRequestToFn(true, string(Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT));
+            sendPaymentRequestToFn(true, string(Constants::PROCESSOR_DEFAULT + Constants::PAYMENTS_ENDPOINT), responseCode);
         }
         else
         {
             if (useFallbackService)
             {
-                sendPaymentRequestToFn(false, string(Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT));
+                sendPaymentRequestToFn(false, string(Constants::PROCESSOR_FALLBACK + Constants::PAYMENTS_ENDPOINT), responseCode);
             }
             else
             {
 
                 /**
-                 * @todo Implementar uma lógica para tratar esse cenário
-                 * @todo Quando os dois serviços estão indisponíveis, não pode haver nenhum tipo de pagamento ?
-                 * @todo Refazer a curl request após um timeout ?
+                 * @todo Débito Técnico - Implementar uma lógica para tratar esse cenário
                  */
-                LOGGER::info("ALERTA!!! Nenhum serviço está funcionando, tanto o 'default' quanto o 'fallback'");
-                LOGGER::info("Salvar o payment em alguma estrura e reprocessar após 5 segundos");
+                LOGGER::error("Nenhum serviço está funcionando");
 
                 responseMap["status"] = Constants::INTERNAL_SERVER_ERROR;
                 responseMap["response"] = "{ \"message\": \"Erro interno do servidor\"}";
@@ -1904,8 +1894,7 @@ public:
         PaymentsSummary paymentSummary;
 
         /**
-         * @todo Débito técnico - Não pode consultar o backend
-         * @details Sempre buscar primeiro no endpoint e caso não consiga, recuperar da base local (evitando phantom reads)
+         * @todo Débito técnico - Não pode consultar o backend, recuperar da base local (evitando phantom reads usar transaction)
          */
         auto sendPaymentsSummaryRequestFn = [&](const string &URL, bool defaultService)
         {
@@ -1976,7 +1965,6 @@ public:
 
         SQLiteDatabaseUtils::closeConnection(database);
 
-        // Retorna o total de pagamentos
         responseMap["status"] = Constants::OK_RESPONSE;
         responseMap["response"] = PaymentsJSONConverter::summaryToJson(paymentSummary);
 
@@ -2165,6 +2153,11 @@ public:
  */
 int main()
 {
+
+    // Em C++, o erro "Broken pipe" geralmente é tratado como um sinal SIGPIPE que é enviado
+    // ao processo quando ele tenta escrever em um pipe ou socket que foi fechado pelo outro lado.
+    signal(SIGPIPE, SIG_IGN); ///< Ignorar o sinal SIGPIPE
+
     int socket_file_descriptor;
     struct sockaddr_in address;
     int addrlen = sizeof(address);
