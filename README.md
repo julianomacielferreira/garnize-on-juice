@@ -2,7 +2,7 @@
 
 <ins>**Garnizé com Suco**</ins> é uma solução desenvolvida em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
-**<ins>Meu principal objetivo</ins>** foi utilizar **C++** com o **<ins>mínimo de dependências</ins>** (somente SQLite3, cURL e UUID) sem necessidade de instalação de outros projetos / libs que não fizessem parte da biblioteca padrão do **C++ (std)** ou system calls.
+**<ins>Meu principal objetivo</ins>** foi utilizar **C++** com o **<ins>mínimo de dependências</ins>** (somente SQLite3, cURL e UUID) sem necessidade de instalação de outros projetos / libs que não fizessem parte da biblioteca padrão do **C++ (STL)** ou system calls.
 
 Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre os obstáculos enfrentados, consulte a seção **`Detalhes Técnicos e Possíveis Melhorias`**.
 
@@ -324,8 +324,6 @@ Algumas razões pelas quais isso pode ocorrer:
 
 Todas as classes e estruturas estão no arquivo `main.cpp` ao 'melhor' estilo `javascript`. A principal melhoria seria criar os respectivos arquivos
 de cabeçalhos (headers .h) e separá-las do arquivo principal.
-
-@TODO
 
 #### Buffer de tamanho fixo para ler dados da conexão
 
