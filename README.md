@@ -24,6 +24,7 @@ conhecimento! Esta é a terceira edição do desafio.
 ```
 .
 ├── compile.sh
+├── database
 ├── DATABASE_MODEL.mwb
 ├── docker-compose.yml
 ├── Dockerfile
@@ -38,6 +39,7 @@ conhecimento! Esta é a terceira edição do desafio.
 │   └── mesa-digitalizadora-wacom.jpg
 ├── test-purge-databse.sh
 └── test-requests.sh
+
 
 ```
 
