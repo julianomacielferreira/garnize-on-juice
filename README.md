@@ -12,9 +12,8 @@ Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre
 
 Abaixo está um vídeo que mostra o limite máximo de requisições e o valor total máximo que pode ser processado pela solução no cenário de testes do k6.
 
-<video width="100%" height="300" controls>
-  <source src="static/video.mp4" type="video/mp4">
-</video>
+![](static/video.gif)
+
 
 ### O que é a Rinha do Backend
 
