@@ -1,4 +1,4 @@
-## Garnize on Juice $${\color{red}[in \space progress]}$$
+## Garnize on Juice
 
 <ins>**Garnizé com Suco**</ins> é uma solução desenvolvida em **C++** para o desafio [Rinha de Backend - 2025](https://github.com/zanfranceschi/rinha-de-backend-2025) atuando como uma API que intermedia pagamentos para dois serviços de processamento de pagamentos com a menor taxa, lidando com instabilidades nos serviços (veja as regras no repositório da rinha [https://github.com/zanfranceschi/rinha-de-backend-2025/blob/main/INSTRUCOES.md]()).
 
