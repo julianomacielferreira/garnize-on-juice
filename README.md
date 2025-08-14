@@ -10,7 +10,7 @@ Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre
 
 ### Teste no cenário de melhor caso
 
-O máximo que a solução conseguiu processar ficou em torno de 15000 requests/minuto no meu pc Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz (4ª Geração) com 16GB de memória RAM.
+O máximo que a solução conseguiu processar ficou em torno de _**15000 requests/minuto**_ no meu pc Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz (4ª Geração) com 16GB de memória RAM.
 
 Abaixo está um vídeo que mostra o o cenário de testes do k6 _**quando nenhum serviço falha ou tem algum delay**_ e o valor total máximo que foi alcançado.
 
