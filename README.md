@@ -8,9 +8,11 @@ Para entender melhor a solução, decisões técnicas adotadas, _insights_ sobre
 
 ![Garnize On Juice](static/garnize-on-juice.png)
 
-### O máximo que a solução pode processar fica em 15000 requests / minuto
+### Teste no cenário de melhor caso
 
-Abaixo está um vídeo que mostra o limite máximo de requisições e o valor total máximo que pode ser processado pela solução no cenário de testes do k6 _**quando nenhum serviço falha ou tem algum delay**_.
+O máximo que a solução conseguiu processar ficou em torno de 15000 requests/minuto no meu pc Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz (4ª Geração) com 16GB de memória RAM.
+
+Abaixo está um vídeo que mostra o o cenário de testes do k6 _**quando nenhum serviço falha ou tem algum delay**_ e o valor total máximo que foi alcançado.
 
 ![](static/video.gif)
 
